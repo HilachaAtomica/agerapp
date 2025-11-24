@@ -21,14 +21,16 @@ type CommentsModalProps = {
   visible: boolean;
   initialComment?: string;
   onClose: () => void;
-  onSave: (comment: string) => void;
+  onSend: (comment: string) => Promise<void>;
+  isLoading?: boolean;
 };
 
 const CommentsModal = ({
   visible,
   initialComment = '',
   onClose,
-  onSave,
+  onSend,
+  isLoading,
 }: CommentsModalProps) => {
   const colors = useColors();
   const [comment, setComment] = useState(initialComment);
@@ -37,14 +39,18 @@ const CommentsModal = ({
     setComment(text);
   };
 
-  const handleSave = () => {
+  const handleSend = async () => {
     if (!comment.trim()) {
       Alert.alert('Error', 'Por favor, escriba un comentario');
       return;
     }
 
-    onSave(comment);
-    onClose();
+    try {
+      await onSend(comment);
+      onClose();
+    } catch (error) {
+      // El error ya se maneja en onSend
+    }
   };
 
   return (
@@ -97,10 +103,10 @@ const CommentsModal = ({
             <View style={styles.buttonContainer}>
               <Button
                 style={styles.saveButton}
-                disabled={!comment.trim()}
+                disabled={!comment.trim() || isLoading}
                 size="smMd"
-                onPress={handleSave}>
-                Guardar comentario
+                onPress={handleSend}>
+                {isLoading ? 'Enviando...' : 'Enviar comentario'}
               </Button>
             </View>
           </View>
@@ -147,7 +153,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   instructionText: {
-    fontSize: 16,
+    fontSize: 18,
     marginBottom: 8,
   },
   inputContainer: {
@@ -157,7 +163,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
+    fontSize: 18,
     minHeight: 150,
   },
   buttonContainer: {

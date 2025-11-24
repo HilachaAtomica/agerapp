@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   TouchableOpacity,
+  PermissionsAndroid,
 } from 'react-native';
 import {useColors} from '../../hooks/hook.color';
 import Text from '../ui/text';
@@ -18,19 +19,26 @@ import AppIcon from '../icons';
 import Header from '../ui/header';
 import {screenW} from '../../theme/metrics';
 import DocumentPicker, {pick} from '@react-native-documents/picker';
+import {
+  launchCamera,
+  launchImageLibrary,
+  Asset,
+} from 'react-native-image-picker';
 
 type BudgetModalProps = {
   visible: boolean;
   onClose: () => void;
-  onSave: (budgetText: string, documents: any) => void;
+  onSend: (budgetText: string, documents: any) => Promise<void>;
   initialBudget?: string;
+  isLoading?: boolean;
 };
 
 const BudgetModal = ({
   visible,
   onClose,
-  onSave,
+  onSend,
   initialBudget,
+  isLoading,
 }: BudgetModalProps) => {
   const colors = useColors();
   const [budgetText, setBudgetText] = useState(initialBudget || '');
@@ -55,8 +63,8 @@ const BudgetModal = ({
     setDocument(newDocuments);
   };
 
-  const handleSave = () => {
-    if (!budgetText && document.length === 0) {
+  const handleSend = async () => {
+    if (!budgetText && (!document || document.length === 0)) {
       Alert.alert(
         'Información requerida',
         'Por favor, ingresa texto en el presupuesto o sube al menos un documento.',
@@ -64,8 +72,123 @@ const BudgetModal = ({
       return;
     }
 
-    onSave(budgetText, document);
-    onClose();
+    try {
+      await onSend(budgetText, document);
+      onClose();
+    } catch (error) {
+      // El error ya se maneja en onSend
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      // Solicitar permiso de cámara en Android
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          {
+            title: 'Permiso de Cámara',
+            message:
+              'La aplicación necesita acceso a tu cámara para tomar fotos',
+            buttonNeutral: 'Preguntar después',
+            buttonNegative: 'Cancelar',
+            buttonPositive: 'Aceptar',
+          },
+        );
+
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Alert.alert(
+            'Permiso denegado',
+            'Necesitas conceder permiso de cámara para usar esta función',
+          );
+          return;
+        }
+      }
+
+      const options: any = {
+        mediaType: 'photo',
+        quality: 0.8,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        saveToPhotos: false,
+      };
+
+      const response = await launchCamera(options);
+
+      if (response.didCancel) {
+        console.log('User cancelled camera');
+        return;
+      }
+
+      if (response.errorCode) {
+        console.error(
+          'Camera Error:',
+          response.errorCode,
+          response.errorMessage,
+        );
+        Alert.alert(
+          'Error',
+          'No se pudo abrir la cámara. Verifica los permisos.',
+        );
+        return;
+      }
+
+      if (response?.assets && response.assets[0]) {
+        const photo = response.assets[0];
+        const photoDocument = {
+          uri: photo.uri,
+          type: photo.type,
+          name: photo.fileName || `photo_${Date.now()}.jpg`,
+          size: photo.fileSize,
+        };
+        setDocument(photoDocument);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'No se pudo tomar la foto');
+    }
+  };
+
+  const selectFromGallery = async () => {
+    try {
+      const options: any = {
+        mediaType: 'photo',
+        quality: 0.8,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      };
+
+      const response = await launchImageLibrary(options);
+
+      if (response.didCancel) {
+        console.log('User cancelled gallery');
+        return;
+      }
+
+      if (response.errorCode) {
+        console.error(
+          'Gallery Error:',
+          response.errorCode,
+          response.errorMessage,
+        );
+        Alert.alert('Error', 'No se pudo abrir la galería');
+        return;
+      }
+
+      if (response?.assets && response.assets[0]) {
+        const photo = response.assets[0];
+        const photoDocument = {
+          uri: photo.uri,
+          type: photo.type,
+          name: photo.fileName || `photo_${Date.now()}.jpg`,
+          size: photo.fileSize,
+        };
+        setDocument(photoDocument);
+      }
+    } catch (error) {
+      console.error('Error selecting from gallery:', error);
+      Alert.alert('Error', 'No se pudo seleccionar la foto');
+    }
   };
 
   return (
@@ -95,8 +218,34 @@ const BudgetModal = ({
                 </Text>
               </View>
 
+              {/* Text input always visible */}
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={[
+                    styles.textInput,
+                    {
+                      borderColor: colors.grey,
+                      color: colors.black,
+                    },
+                  ]}
+                  multiline
+                  numberOfLines={10}
+                  placeholder="Escriba el presupuesto aquí..."
+                  placeholderTextColor="#999"
+                  value={budgetText}
+                  onChangeText={setBudgetText}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <Text
+                style={{marginVertical: 12, textAlign: 'center'}}
+                fw="semibold">
+                O
+              </Text>
+
               {/* Lista de documentos seleccionados */}
-              {document ? (
+              {document && (
                 <View style={styles.documentsList}>
                   <View style={styles.documentItem}>
                     <View style={styles.documentInfo}>
@@ -112,50 +261,54 @@ const BudgetModal = ({
                     </TouchableOpacity>
                   </View>
                 </View>
-              ) : (
-                <>
-                  <View style={styles.inputContainer}>
-                    <TextInput
-                      style={[
-                        styles.textInput,
-                        {
-                          borderColor: colors.grey,
-                          color: colors.black,
-                        },
-                      ]}
-                      multiline
-                      numberOfLines={10}
-                      placeholder="Escriba el presupuesto aquí..."
-                      placeholderTextColor="#999"
-                      value={budgetText}
-                      onChangeText={setBudgetText}
-                      textAlignVertical="top"
-                    />
-                  </View>
-
-                  <Text
-                    style={{marginVertical: 12, textAlign: 'center'}}
-                    fw="semibold">
-                    O
-                  </Text>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.photoSourceButton,
-                      {borderColor: colors.primary},
-                    ]}
-                    onPress={uploadFile}>
-                    <AppIcon name="file" size={36} color={colors.primary} />
-                    <Text color={colors.primary} fw="medium">
-                      Subir documento
-                    </Text>
-                  </TouchableOpacity>
-                </>
               )}
+
+              {/* Document picker buttons always visible */}
+              <View style={styles.buttonsContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.photoSourceButton,
+                    {borderColor: colors.primary},
+                  ]}
+                  onPress={uploadFile}>
+                  <AppIcon name="file" size={36} color={colors.primary} />
+                  <Text color={colors.primary} fw="medium">
+                    Documento
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.photoSourceButton,
+                    {borderColor: colors.primary},
+                  ]}
+                  onPress={takePhoto}>
+                  <AppIcon name="camera" size={36} color={colors.primary} />
+                  <Text color={colors.primary} fw="medium">
+                    Cámara
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.photoSourceButton,
+                    {borderColor: colors.primary},
+                  ]}
+                  onPress={selectFromGallery}>
+                  <AppIcon name="gallery" size={36} color={colors.primary} />
+                  <Text color={colors.primary} fw="medium">
+                    Galería
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </ScrollView>
 
-            <Button style={styles.saveButton} size="smMd" onPress={handleSave}>
-              Guardar presupuesto
+            <Button
+              style={styles.saveButton}
+              size="smMd"
+              onPress={handleSend}
+              disabled={isLoading}>
+              {isLoading ? 'Enviando...' : 'Enviar presupuesto'}
             </Button>
           </View>
         </KeyboardAvoidingView>
@@ -204,7 +357,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
+    fontSize: 18,
     minHeight: 150,
   },
   documentContainer: {
@@ -240,7 +393,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   fileTypesHint: {
-    fontSize: 12,
+    fontSize: 14,
     textAlign: 'center',
   },
   saveButton: {
@@ -253,10 +406,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   instructionText: {
-    fontSize: 16,
+    fontSize: 18,
     marginBottom: 8,
   },
+  buttonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   photoSourceButton: {
+    flex: 1,
     height: 100,
     justifyContent: 'center',
     alignItems: 'center',
@@ -276,11 +435,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   documentName: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
   },
   documentSize: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
     marginTop: 2,
   },

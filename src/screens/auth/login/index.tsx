@@ -45,6 +45,9 @@ const Login = ({}: Props) => {
         setLoading(true);
         setError(undefined);
 
+        // Limpiar cualquier token previo antes de intentar login
+        await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
+        console.log('Login data', data);
         const response = await loginUser(data).unwrap();
         console.log('response token', response?.token);
         console.log('response role', response?.role);
@@ -92,7 +95,7 @@ const Login = ({}: Props) => {
       <View style={[styles.bot, {backgroundColor: colors.white}]}>
         <Text
           color={colors.black}
-          style={{fontSize: 20, textAlign: 'center'}}
+          style={{fontSize: 22, textAlign: 'center'}}
           fw="semibold">
           Iniciar sesión
         </Text>
@@ -113,12 +116,6 @@ const Login = ({}: Props) => {
             leftIcon="padlock"
             placeholder="Contraseña"
           />
-          <Text
-            style={{width: '100%', textAlign: 'right'}}
-            fw="medium"
-            color={colors.primary}>
-            ¿Olvidaste la contraseña?
-          </Text>
           {error && (
             <Text
               style={{width: '100%', textAlign: 'center', marginTop: 8}}

@@ -137,13 +137,13 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   label: {
-    fontSize: 12,
+    fontSize: 14,
   },
   textInputContainer: {
     flex: 1,
   },
   textInput: {
-    fontSize: 14,
+    fontSize: 16,
     padding: 0,
     margin: 0,
     flex: 1,

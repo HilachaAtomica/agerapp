@@ -30,16 +30,6 @@ const Settings = ({navigation}: Props) => {
             title="Historial de citas"
             onPress={() => navigation.navigate('AppointmentHistory')}
           />
-          <SettingsItem
-            icon="changePassword"
-            title="Cambiar contraseña"
-            onPress={() => console.log('Profile')}
-          />
-          <SettingsItem
-            icon="notification"
-            title="Notificaciones"
-            onPress={() => console.log('Language')}
-          />
         </View>
         <View style={[styles.section, {backgroundColor: colors.white}]}>
           <SettingsItem

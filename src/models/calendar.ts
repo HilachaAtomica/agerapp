@@ -1,9 +1,11 @@
 export interface Appointment {
   expedienteId: number;
-  fechaCita: string;
+  fechaCita?: string;
   fechaCitaFin: string;
   domicilioCliente: string;
   localidadCliente: string;
+  citaId: number;
+  isDone?: boolean;
 }
 
 export interface Contact {
@@ -16,6 +18,7 @@ export interface Contact {
 }
 
 export interface AppointmentDetail {
+  citaId: number;
   expedienteId: number;
   domicilioCliente: string;
   localidadCliente: string;
@@ -23,4 +26,9 @@ export interface AppointmentDetail {
   fechaCita: string;
   fechaCitaFin: string;
   contactos: Contact[];
+  tieneFotos?: boolean;
+  tieneFirmas?: boolean;
+  tienePresupuesto?: boolean;
+  tieneComentarios?: boolean;
+  isDone?: boolean;
 }

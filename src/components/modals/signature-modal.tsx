@@ -19,10 +19,16 @@ import {screenH, screenW} from '../../theme/metrics';
 type SignatureModalProps = {
   visible: boolean;
   onClose: () => void;
-  onSave: (signature: string) => void;
+  onSend: (signature: string) => Promise<void>;
+  isLoading?: boolean;
 };
 
-const SignatureModal = ({visible, onClose, onSave}: SignatureModalProps) => {
+const SignatureModal = ({
+  visible,
+  onClose,
+  onSend,
+  isLoading,
+}: SignatureModalProps) => {
   const colors = useColors();
   const signatureRef = useRef<SignatureViewRef>(null);
   const [signatureExists, setSignatureExists] = useState(false);
@@ -75,15 +81,19 @@ const SignatureModal = ({visible, onClose, onSave}: SignatureModalProps) => {
             <View style={[styles.canvasContainer, {borderColor: colors.grey}]}>
               <SignatureCanvas
                 ref={signatureRef}
-                onOK={signature => {
-                  onSave(signature);
-                  onClose();
+                onOK={async signature => {
+                  try {
+                    await onSend(signature);
+                    onClose();
+                  } catch (error) {
+                    // El error ya se maneja en onSend
+                  }
                 }}
                 onBegin={handleEnd}
                 onEmpty={() => setSignatureExists(false)}
                 descriptionText=""
                 clearText="Limpiar"
-                confirmText="Guardar"
+                confirmText={isLoading ? 'Enviando...' : 'Enviar'}
                 webStyle={style}
                 penColor={colors.black}
               />
@@ -138,7 +148,7 @@ const styles = StyleSheet.create({
   },
   instructions: {
     marginBottom: 16,
-    fontSize: 16,
+    fontSize: 18,
   },
   canvasContainer: {
     height: 220,

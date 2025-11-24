@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     flex: 1,
     textAlign: 'center',
   },

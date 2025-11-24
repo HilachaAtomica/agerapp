@@ -6,6 +6,7 @@ import {
   View,
   ActivityIndicator,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {AuthStackParamList} from '../../../navigation/navigation.auth';
 import {useColors} from '../../../hooks/hook.color';
@@ -14,6 +15,7 @@ import AppointmentItem from '../../../components/appointment-item';
 import {useCallback} from 'react';
 import AppointmentHistoryItem from '../../../components/appintment-history-item';
 import Header from '../../../components/ui/header';
+import {openAppointmentInformationModal} from '../../../utils/utils.global';
 import {
   useGetUpcomingAppointmentsQuery,
   useGetPendingAppointmentsQuery,
@@ -38,7 +40,7 @@ const Home = ({}: Props) => {
   } = useGetPendingAppointmentsQuery();
 
   return (
-    <View style={{flex: 1}}>
+    <SafeAreaView style={{flex: 1}} edges={['top']}>
       <Header title="Citas" />
       <ScrollView style={styles.container}>
         <View style={styles.section}>
@@ -57,9 +59,10 @@ const Home = ({}: Props) => {
               .slice(0, 3)
               .map((item, index) => (
                 <AppointmentItem
-                  key={`upcoming-${item.expedienteId}-${index}`}
+                  key={index}
                   appointment={item}
-                  onPress={() => console.log('Cita seleccionada:', item)}
+                  isComming={true}
+                  onPress={() => openAppointmentInformationModal(item.citaId)}
                 />
               ))
           ) : (
@@ -85,11 +88,12 @@ const Home = ({}: Props) => {
               .slice(0, 3)
               .map((item, index) => (
                 <AppointmentItem
-                  key={`pending-${item.expedienteId}-${index}`}
+                  key={index}
                   appointment={item}
-                  onPress={() =>
-                    console.log('Cita pendiente seleccionada:', item)
-                  }
+                  iconColor={colors.orange}
+                  icon="exclamation"
+                  isPending
+                  onPress={() => openAppointmentInformationModal(item.citaId)}
                 />
               ))
           ) : (
@@ -99,7 +103,7 @@ const Home = ({}: Props) => {
           )}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -112,7 +116,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
   },
@@ -124,10 +128,10 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginLeft: 10,
-    fontSize: 14,
+    fontSize: 16,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 16,
     textAlign: 'center',
     fontStyle: 'italic',
     padding: 20,

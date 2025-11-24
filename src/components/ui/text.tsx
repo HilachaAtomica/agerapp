@@ -52,7 +52,7 @@ const UIText = (props: UITextProps) => {
 
 const styles = StyleSheet.create({
   text: {
-    fontSize: 14,
+    fontSize: 16,
   },
 });
 

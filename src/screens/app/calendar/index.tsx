@@ -1,4 +1,5 @@
 import {ScrollView, StyleSheet, View, ActivityIndicator} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {AppTabParamList} from '../../../navigation/navigation.app';
 import {Calendar} from 'react-native-calendars';
@@ -54,7 +55,7 @@ const CalendarScreen = ({}: Props) => {
     // Marcar todas las fechas con citas usando la API
     daysWithAppointments.forEach(date => {
       marked[date] = {
-        dots: [{color: colors.primary}],
+        dots: [{color: colors.primary, size: 10}],
       };
     });
 
@@ -80,7 +81,7 @@ const CalendarScreen = ({}: Props) => {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="Calendario" />
 
       <View style={{padding: 16}}>
@@ -108,12 +109,22 @@ const CalendarScreen = ({}: Props) => {
             dayTextColor: colors.black,
             textDisabledColor: colors.grey,
             monthTextColor: colors.primary,
+            'stylesheet.dot': {
+              dot: {
+                width: 12,
+                height: 12,
+                marginTop: 1,
+                marginLeft: 1,
+                marginRight: 1,
+                borderRadius: 6,
+              },
+            },
           }}
           renderHeader={() => (
             <Text
               style={{
                 textTransform: 'capitalize',
-                fontSize: 18,
+                fontSize: 20,
                 fontWeight: 'bold',
                 color: colors.primary,
               }}>
@@ -150,9 +161,11 @@ const CalendarScreen = ({}: Props) => {
           ) : filteredAppointments.length > 0 ? (
             filteredAppointments.map((appointment, index) => (
               <AppointmentItem
-                key={`${appointment.expedienteId}-${index}`}
+                key={index}
                 appointment={appointment}
-                onPress={() => console.log('Cita seleccionada:', appointment)}
+                onPress={() =>
+                  openAppointmentInformationModal(appointment.citaId)
+                }
               />
             ))
           ) : (
@@ -165,7 +178,7 @@ const CalendarScreen = ({}: Props) => {
           )}
         </ScrollView>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -178,7 +191,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   dateTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
     textTransform: 'capitalize',
@@ -193,7 +206,7 @@ const styles = StyleSheet.create({
     paddingVertical: 30,
   },
   noAppointments: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#777',
     textAlign: 'center',
     marginTop: 12,
@@ -206,7 +219,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginLeft: 10,
-    fontSize: 14,
+    fontSize: 16,
   },
 });
 

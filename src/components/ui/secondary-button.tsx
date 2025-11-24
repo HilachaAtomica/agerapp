@@ -80,7 +80,7 @@ const UiSecondaryButton = ({
         {typeof children === 'string' ? (
           <Text
             color={textColor}
-            style={[{fontSize: 16}, textStyles]}
+            style={[{fontSize: 18}, textStyles]}
             fw="medium">
             {children}
           </Text>

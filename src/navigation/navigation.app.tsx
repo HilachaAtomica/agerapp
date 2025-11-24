@@ -31,14 +31,14 @@ const AppNavigation = () => {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.grey,
         tabBarStyle: {
-          height: 55,
-          paddingBottom: 0,
+          height: 55 + insets.bottom,
+          paddingBottom: insets.bottom,
           backgroundColor: colors.white,
           borderTopWidth: 1,
           borderTopColor: colors.lightGrey,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: '500',
         },
       }}>

@@ -13,6 +13,7 @@ import {AccountParamList} from '..';
 import AppointmentHistoryItem from '../../../../components/appintment-history-item';
 import {Appointment} from '../../../../models/calendar';
 import {useGetAppointmentsHistoryQuery} from '../../../../redux/services/service.calendar';
+import {openAppointmentInformationModal} from '../../../../utils/utils.global';
 import Text from '../../../../components/ui/text';
 
 type Props = NativeStackScreenProps<AccountParamList, 'AppointmentHistory'>;
@@ -36,8 +37,8 @@ const AppointmentHistory = ({navigation}: Props) => {
   const renderItem = useCallback(
     ({item}: {item: Appointment}) => (
       <AppointmentHistoryItem
-        appointment={item}
-        onPress={() => console.log('Cita del historial seleccionada:', item)}
+        appointment={{...item, isDone: true}}
+        onPress={() => openAppointmentInformationModal(item.citaId, true)}
       />
     ),
     [],
@@ -86,7 +87,7 @@ const AppointmentHistory = ({navigation}: Props) => {
       <FlatList
         data={appointmentsHistory}
         renderItem={renderItem}
-        keyExtractor={item => item.expedienteId.toString()}
+        keyExtractor={item => item.citaId.toString()}
         contentContainerStyle={[
           styles.listContent,
           appointmentsHistory.length === 0 && styles.emptyContainer,

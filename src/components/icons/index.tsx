@@ -29,6 +29,7 @@ import HistoryIcon from './history';
 import GalleryIcon from './gallery';
 import CameraIcon from './camera';
 import FileIcon from './file';
+import Exclamation from './exclamation';
 
 export type IconNameProp =
   | 'home'
@@ -59,7 +60,8 @@ export type IconNameProp =
   | 'history'
   | 'gallery'
   | 'camera'
-  | 'file';
+  | 'file'
+  | 'exclamation';
 
 type AppIconProps = {
   name: IconNameProp;
@@ -108,6 +110,7 @@ const AppIcon = ({name, size = 30, color}: AppIconProps) => {
       gallery: <GalleryIcon {...iconsProps} />,
       camera: <CameraIcon {...iconsProps} />,
       file: <FileIcon {...iconsProps} />,
+      exclamation: <Exclamation {...iconsProps} />,
     }),
     [iconsProps],
   );

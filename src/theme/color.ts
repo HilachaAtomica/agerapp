@@ -9,19 +9,21 @@ export type ColorScheme = {
   halfWhite: string;
   green: string;
   yellow: string;
+  orange: string;
 };
 
 export const light: ColorScheme = {
   white: '#fff',
   black: '#000',
   primary: '#CDA16A',
-  grey: '#676767',
-  lightGrey: '#A8A8A9',
-  darkGrey: '#2C2C2C',
+  grey: '#4A4A4A',
+  lightGrey: '#7A7A7A',
+  darkGrey: '#1A1A1A',
   red: '#FD0100',
   halfWhite: '#F2F2F2',
   green: '#007f1b',
   yellow: '#FFC107',
+  orange: '#FF8C00',
 };
 
 export type ColorType = keyof ColorScheme;

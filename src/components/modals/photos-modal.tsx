@@ -9,6 +9,8 @@ import {
   ScrollView,
   Dimensions,
   TouchableOpacity,
+  PermissionsAndroid,
+  Platform,
 } from 'react-native';
 import {useColors} from '../../hooks/hook.color';
 import Text from '../ui/text';
@@ -22,36 +24,53 @@ import {
 } from 'react-native-image-picker';
 
 import {convertToFormData} from '../../utils/utils.functions';
-import {useCameraPermission} from 'react-native-vision-camera';
 import {screenW} from '../../theme/metrics';
 
 type PhotosModalProps = {
   visible: boolean;
   onClose: () => void;
-  onSave: (photos: Asset[]) => void;
+  onSend: (photos: any[]) => Promise<void>;
+  isLoading?: boolean;
 };
 
-const PhotosModal = ({visible, onClose, onSave}: PhotosModalProps) => {
+const PhotosModal = ({
+  visible,
+  onClose,
+  onSend,
+  isLoading,
+}: PhotosModalProps) => {
   const colors = useColors();
-  const [photos, setPhotos] = useState<Asset[]>([]);
-  const {hasPermission, requestPermission} = useCameraPermission();
+  const [photos, setPhotos] = useState<any[]>([]);
 
-  const selectImg = useCallback(() => {
-    if (!hasPermission) {
-      console.log('No permission');
-      return requestPermission();
-    }
+  const selectImg = useCallback(async () => {
+    try {
+      const options: any = {
+        title: 'Selecciona una imagen',
+        selectionLimit: 0,
+        mediaType: 'photo',
+        storageOptions: {
+          skipBackup: true,
+          path: 'images',
+        },
+      };
 
-    const options: any = {
-      title: 'Selecciona una imagen',
-      selectionLimit: 0,
-      storageOptions: {
-        skipBackup: true,
-        path: 'images',
-      },
-    };
+      const response = await launchImageLibrary(options);
 
-    launchImageLibrary(options, response => {
+      if (response.didCancel) {
+        console.log('User cancelled gallery');
+        return;
+      }
+
+      if (response.errorCode) {
+        console.error(
+          'Gallery Error:',
+          response.errorCode,
+          response.errorMessage,
+        );
+        Alert.alert('Error', 'No se pudo abrir la galería');
+        return;
+      }
+
       if (response?.assets) {
         if (response.assets.length > 1) {
           const selectedImages = response.assets.map(asset =>
@@ -63,29 +82,86 @@ const PhotosModal = ({visible, onClose, onSave}: PhotosModalProps) => {
           setPhotos(prevPhotos => [...prevPhotos, file]);
         }
       }
-    });
-  }, [hasPermission, requestPermission]);
-
-  const takePicture = useCallback(() => {
-    if (!hasPermission) {
-      return requestPermission();
+    } catch (error) {
+      console.error('Error selecting images:', error);
+      Alert.alert('Error', 'No se pudo seleccionar las imágenes');
     }
-    const options: any = {
-      title: 'Tomar foto',
-      storageOptions: {
-        skipBackup: true,
-        path: 'images',
-      },
-      includeBase64: true,
-    };
+  }, []);
 
-    launchCamera(options, response => {
-      if (response?.assets) {
-        const file = convertToFormData(response.assets[0]);
+  const takePicture = useCallback(async () => {
+    try {
+      console.log('takePicture called');
+
+      // Solicitar permiso de cámara en Android
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          {
+            title: 'Permiso de Cámara',
+            message:
+              'La aplicación necesita acceso a tu cámara para tomar fotos',
+            buttonNeutral: 'Preguntar después',
+            buttonNegative: 'Cancelar',
+            buttonPositive: 'Aceptar',
+          },
+        );
+
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Alert.alert(
+            'Permiso denegado',
+            'Necesitas conceder permiso de cámara para usar esta función',
+          );
+          return;
+        }
+      }
+
+      const options: any = {
+        mediaType: 'photo',
+        quality: 0.8,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        saveToPhotos: false,
+      };
+
+      const response = await launchCamera(options);
+      console.log('Camera response:', response);
+
+      if (response.didCancel) {
+        console.log('User cancelled camera');
+        return;
+      }
+
+      if (response.errorCode) {
+        console.error(
+          'Camera Error:',
+          response.errorCode,
+          response.errorMessage,
+        );
+        Alert.alert(
+          'Error',
+          'No se pudo abrir la cámara. Verifica los permisos.',
+        );
+        return;
+      }
+
+      if (response?.assets && response.assets[0]) {
+        const photo = response.assets[0];
+        console.log('Photo captured:', photo);
+        const photoAsset = {
+          uri: photo.uri,
+          type: photo.type,
+          fileName: photo.fileName || `photo_${Date.now()}.jpg`,
+          size: photo.fileSize,
+        };
+        const file = convertToFormData(photoAsset);
+        console.log('Converted file:', file);
         setPhotos(prevPhotos => [...prevPhotos, file]);
       }
-    });
-  }, [hasPermission, requestPermission]);
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'No se pudo tomar la foto');
+    }
+  }, []);
 
   const handleDelete = (index: number) => {
     const newPhotos = [...photos];
@@ -93,14 +169,21 @@ const PhotosModal = ({visible, onClose, onSave}: PhotosModalProps) => {
     setPhotos(newPhotos);
   };
 
-  const handleSave = () => {
+  const handleSend = async () => {
     if (photos.length === 0) {
       Alert.alert('Error', 'Por favor, agregue al menos una foto');
       return;
     }
 
-    onSave(photos);
-    onClose();
+    console.log('PhotosModal handleSend called with photos:', photos);
+
+    try {
+      await onSend(photos);
+      onClose();
+    } catch (error) {
+      console.error('Error in PhotosModal handleSend:', error);
+      // El error ya se maneja en onSend
+    }
   };
 
   return (
@@ -178,10 +261,10 @@ const PhotosModal = ({visible, onClose, onSave}: PhotosModalProps) => {
 
             <Button
               style={styles.saveButton}
-              onPress={handleSave}
+              onPress={handleSend}
               size="smMd"
-              disabled={photos.length === 0}>
-              Guardar fotos
+              disabled={photos.length === 0 || isLoading}>
+              {isLoading ? 'Enviando...' : 'Enviar fotos'}
             </Button>
           </View>
         </View>
@@ -220,7 +303,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   instructionText: {
-    fontSize: 16,
+    fontSize: 18,
     textAlign: 'center',
     marginBottom: 8,
   },

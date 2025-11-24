@@ -20,7 +20,7 @@ export const calendarApi = createApi({
       providesTags: ['Appointment'],
     }),
     getAppointmentInfo: builder.query<AppointmentDetail, number>({
-      query: expedienteId => `infoCitaOperario/${expedienteId}`,
+      query: citaId => `infoCitaOperario/${citaId}`,
       providesTags: ['Appointment'],
     }),
     getUpcomingAppointments: builder.query<Appointment[], void>({
@@ -39,6 +39,45 @@ export const calendarApi = createApi({
         `citasHistorial?offset=${offset}&limit=${limit}`,
       providesTags: ['Appointment'],
     }),
+    // POST endpoints para subir archivos
+    uploadBudget: builder.mutation<any, {citaId: number; files: FormData}>({
+      query: ({citaId, files}) => ({
+        url: `subirPresupuesto/${citaId}`,
+        method: 'POST',
+        body: files,
+      }),
+      invalidatesTags: ['Appointment'],
+    }),
+    uploadSignatures: builder.mutation<any, {citaId: number; files: FormData}>({
+      query: ({citaId, files}) => ({
+        url: `subirFirmas/${citaId}`,
+        method: 'POST',
+        body: files,
+      }),
+      invalidatesTags: ['Appointment'],
+    }),
+    uploadComments: builder.mutation<any, {citaId: number; texto: string}>({
+      query: ({citaId, texto}) => ({
+        url: `subirComentarios/${citaId}?texto=${encodeURIComponent(texto)}`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Appointment'],
+    }),
+    uploadPhotos: builder.mutation<any, {citaId: number; files: FormData}>({
+      query: ({citaId, files}) => ({
+        url: `subirFotos/${citaId}`,
+        method: 'POST',
+        body: files,
+      }),
+      invalidatesTags: ['Appointment'],
+    }),
+    closeCita: builder.mutation<any, number>({
+      query: citaId => ({
+        url: `cerrarCita/${citaId}`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Appointment'],
+    }),
   }),
 });
 
@@ -49,4 +88,9 @@ export const {
   useGetUpcomingAppointmentsQuery,
   useGetPendingAppointmentsQuery,
   useGetAppointmentsHistoryQuery,
+  useUploadBudgetMutation,
+  useUploadSignaturesMutation,
+  useUploadCommentsMutation,
+  useUploadPhotosMutation,
+  useCloseCitaMutation,
 } = calendarApi;

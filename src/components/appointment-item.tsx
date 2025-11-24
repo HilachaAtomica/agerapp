@@ -2,44 +2,180 @@ import {Pressable, StyleSheet, View} from 'react-native';
 import {useColors} from '../hooks/hook.color';
 import {Appointment} from '../models/calendar';
 import Text from './ui/text';
-import AppIcon from './icons';
+import AppIcon, {IconNameProp} from './icons';
 import moment from 'moment';
 
 type Props = {
   appointment: Appointment;
   onPress?: () => void;
+  icon?: IconNameProp;
+  iconColor?: string;
+  isPending?: boolean;
+  isComming?: boolean; // Nueva prop para próximas citas
+  isFromHistory?: boolean; // Nueva prop para citas del historial
 };
 
-const AppointmentItem = ({appointment, onPress}: Props) => {
+const AppointmentItem = ({
+  appointment,
+  onPress,
+  icon,
+  iconColor,
+  isPending,
+  isComming,
+  isFromHistory,
+}: Props) => {
   const colors = useColors();
 
   // Calcular días restantes basado en fechaCita
   const getDaysRemaining = () => {
+    if (!appointment.fechaCita) {
+      // Si no hay fechaCita, usar fechaCitaFin
+      const appointmentDate = moment(appointment.fechaCitaFin);
+      const today = moment().startOf('day');
+      const daysRemaining = appointmentDate.diff(today, 'days');
+      return daysRemaining >= 0 ? daysRemaining : 0;
+    }
     const appointmentDate = moment(appointment.fechaCita);
     const today = moment().startOf('day');
     const daysRemaining = appointmentDate.diff(today, 'days');
     return daysRemaining >= 0 ? daysRemaining : 0;
   };
 
+  // Nueva función para obtener el estado de próximas citas
+  const getCommingStatus = () => {
+    if (!isComming && !isFromHistory) return null;
+
+    const today = moment().startOf('day');
+    const startDate = appointment.fechaCita
+      ? moment(appointment.fechaCita).startOf('day')
+      : null;
+    const endDate = moment(appointment.fechaCitaFin).startOf('day');
+
+    // Si viene del historial, siempre mostrar "Finalizada"
+    if (isFromHistory) {
+      return {
+        text: 'Finalizada',
+        color: colors.green,
+      };
+    }
+
+    // Lógica para próximas citas (isComming = true)
+    if (startDate) {
+      // Si estamos entre fecha inicio y fecha fin = EN CURSO
+      if (today.isBetween(startDate, endDate, 'day', '[]')) {
+        return {
+          text: 'En curso',
+          color: colors.red,
+        };
+      }
+
+      // Si aún no empieza (fecha inicio futura) = DÍAS RESTANTES
+      if (today.isBefore(startDate)) {
+        const daysRemaining = startDate.diff(today, 'days');
+        if (daysRemaining === 0) return {text: 'Hoy', color: colors.green};
+        if (daysRemaining === 1) return {text: 'Mañana', color: colors.yellow};
+        return {
+          text: `${daysRemaining} días`,
+          color: colors.yellow,
+        };
+      }
+
+      // Si ya pasó la fecha fin = PENDIENTE (no finalizada)
+      if (today.isAfter(endDate)) {
+        return {
+          text: 'Pendiente',
+          color: colors.orange,
+        };
+      }
+    }
+
+    // Si no hay fecha inicio, usar solo fecha fin
+    if (!startDate) {
+      // Si aún no llega la fecha fin = DÍAS RESTANTES
+      if (today.isBefore(endDate) || today.isSame(endDate)) {
+        const daysRemaining = endDate.diff(today, 'days');
+        if (daysRemaining === 0) return {text: 'Hoy', color: colors.green};
+        if (daysRemaining === 1) return {text: 'Mañana', color: colors.yellow};
+        return {
+          text: `${daysRemaining} días`,
+          color: colors.yellow,
+        };
+      }
+
+      // Si ya pasó la fecha fin = PENDIENTE
+      return {text: 'Pendiente', color: colors.orange};
+    }
+
+    // Fallback - nunca debería llegar aquí
+    return {text: 'Pendiente', color: colors.orange};
+  };
+
   const getDaysRemainingColor = () => {
+    // Si es sección de próximas citas o historial, usar nueva lógica
+    if (isComming || isFromHistory) {
+      const status = getCommingStatus();
+      return status?.color || colors.primary;
+    }
+
     const daysRemaining = getDaysRemaining();
+    // Si la cita está finalizada, siempre verde
+    if (appointment.isDone) return colors.green;
+    // Pendientes de cerrar en rojo
+    if (isPending) return colors.red;
     if (daysRemaining <= 3) return colors.red;
     if (daysRemaining <= 7) return colors.yellow;
     return colors.green;
   };
 
   const getDaysRemainingText = () => {
+    // Si es sección de próximas citas o historial, usar nueva lógica
+    if (isComming || isFromHistory) {
+      const status = getCommingStatus();
+      return status?.text || '';
+    }
+
     const daysRemaining = getDaysRemaining();
+    // Si la cita está finalizada
+    if (appointment.isDone) return 'Finalizada';
+
+    // Si es pendiente, calcular días desde fechaCitaFin
+    if (isPending) {
+      const endDate = moment(appointment.fechaCitaFin);
+      const today = moment().startOf('day');
+      const daysSinceEnd = today.diff(endDate.startOf('day'), 'days');
+      if (daysSinceEnd === 0) return 'Pendiente hoy';
+      if (daysSinceEnd === 1) return 'Pendiente hace 1 día';
+      return `Pendiente hace ${daysSinceEnd} días`;
+    }
+
     if (daysRemaining === 0) return 'Hoy';
     if (daysRemaining === 1) return 'Mañana';
     return `${daysRemaining} días`;
   };
 
-  // Formatear hora
-  const getTimeRange = () => {
-    const start = moment(appointment.fechaCita).format('HH:mm');
-    const end = moment(appointment.fechaCitaFin).format('HH:mm');
-    return `${start} - ${end}`;
+  // Formatear fechas según el tipo de cita
+  const getDateTimeInfo = () => {
+    if (isPending) {
+      // Citas pendientes de cerrar: solo fecha fin
+      const fechaFin = moment(appointment.fechaCitaFin).format('DD/MM/YYYY');
+      return `Fecha fin: ${fechaFin}`;
+    } else {
+      // Próximas citas: fecha inicio y fin con horas
+      if (!appointment.fechaCita) {
+        // Si no hay fechaCita, mostrar solo fecha fin con hora
+        const fechaFin = moment(appointment.fechaCitaFin).format(
+          'DD/MM/YYYY HH:mm',
+        );
+        return `Fecha fin: ${fechaFin}`;
+      }
+      const fechaInicio = moment(appointment.fechaCita).format(
+        'DD/MM/YYYY HH:mm',
+      );
+      const fechaFin = moment(appointment.fechaCitaFin).format(
+        'DD/MM/YYYY HH:mm',
+      );
+      return `Fecha inicio: ${fechaInicio}\nFecha fin: ${fechaFin}`;
+    }
   };
 
   return (
@@ -51,18 +187,20 @@ const AppointmentItem = ({appointment, onPress}: Props) => {
           <View
             style={[
               styles.iconContainer,
-              {backgroundColor: getDaysRemainingColor()},
+              {backgroundColor: iconColor ?? getDaysRemainingColor()},
             ]}>
-            <AppIcon size={16} name="clock" color={colors.white} />
+            <AppIcon size={16} name={icon ?? 'clock'} color={colors.white} />
           </View>
-          <Text fw="bold" style={{fontSize: 16}}>
-            Expediente #{appointment.expedienteId}
+          <Text fw="bold" style={{fontSize: 18}}>
+            {appointment.expedienteId}
           </Text>
         </View>
 
-        <Text fw="semibold" color={getDaysRemainingColor()}>
-          {getDaysRemainingText()}
-        </Text>
+        {(isComming || isPending || isFromHistory) && (
+          <Text fw="semibold" color={getDaysRemainingColor()}>
+            {getDaysRemainingText()}
+          </Text>
+        )}
       </View>
 
       <View style={styles.detailsContainer}>
@@ -74,7 +212,9 @@ const AppointmentItem = ({appointment, onPress}: Props) => {
           {appointment.localidadCliente}
         </Text>
 
-        <Text color={colors.grey}>{getTimeRange()}</Text>
+        <Text color={colors.grey} numberOfLines={isPending ? 1 : 2}>
+          {getDateTimeInfo()}
+        </Text>
       </View>
     </Pressable>
   );
