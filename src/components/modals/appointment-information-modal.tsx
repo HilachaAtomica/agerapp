@@ -125,59 +125,103 @@ const AppointmentInformationModal = (
     if (isDoneFromHistory) return true;
   };
 
-  const getDaysRemainingColor = () => {
-    const daysRemaining = formattedAppointment?.daysRemaining || 0;
+  // Calcular días restantes basado en fechaCita
+  const getDaysRemaining = () => {
+    if (!appointment?.fechaCita) {
+      // Si no hay fechaCita, usar fechaCitaFin
+      const appointmentDate = moment(appointment?.fechaCitaFin);
+      const today = moment().startOf('day');
+      const daysRemaining = appointmentDate.diff(today, 'days');
+      return daysRemaining >= 0 ? daysRemaining : 0;
+    }
+    const appointmentDate = moment(appointment.fechaCita);
+    const today = moment().startOf('day');
+    const daysRemaining = appointmentDate.diff(today, 'days');
+    return daysRemaining >= 0 ? daysRemaining : 0;
+  };
 
-    // Si la cita está finalizada desde el historial, siempre verde
+  // Función para obtener el estado basado en el contexto del modal
+  const getCommingStatus = () => {
+    if (!appointment) return null;
+
+    const today = moment().startOf('day');
+    const startDate = appointment.fechaCita
+      ? moment(appointment.fechaCita).startOf('day')
+      : null;
+    const endDate = moment(appointment.fechaCitaFin).startOf('day');
+
+    // Si viene del historial, siempre mostrar "Finalizada"
     if (isDoneFromHistory) {
-      return colors.green;
+      return {
+        text: 'Finalizada',
+        color: colors.green,
+      };
     }
 
-    // Si está pendiente de enviar (naranja)
-    if (moment().isAfter(appointment?.fechaCitaFin)) {
-      return colors.orange;
+    // Determinar si es una cita pendiente (pasó la fecha fin)
+    const isPending = today.isAfter(endDate);
+
+    if (isPending) {
+      const daysSinceEnd = today.diff(endDate, 'days');
+      if (daysSinceEnd === 0) return {text: 'Pendiente hoy', color: colors.red};
+      if (daysSinceEnd === 1)
+        return {text: 'Pendiente hace 1 día', color: colors.red};
+      return {text: `Pendiente hace ${daysSinceEnd} días`, color: colors.red};
     }
 
-    if (moment().isBetween(appointment?.fechaCita, appointment?.fechaCitaFin)) {
-      return colors.red;
+    // Lógica para citas en progreso o futuras
+    if (startDate) {
+      // Si estamos entre fecha inicio y fecha fin = EN CURSO
+      if (today.isSame(startDate)) {
+        return {
+          text: 'Hoy',
+          color: colors.green,
+        };
+      }
+      if (today.isBetween(startDate, endDate, 'day', '[]')) {
+        return {
+          text: 'En curso',
+          color: colors.green,
+        };
+      }
+
+      // Si aún no empieza (fecha inicio futura) = DÍAS RESTANTES
+      if (today.isBefore(startDate)) {
+        const daysRemaining = startDate.diff(today, 'days');
+        if (daysRemaining === 1) return {text: 'Mañana', color: colors.yellow};
+        return {
+          text: `${daysRemaining} días`,
+          color: colors.yellow,
+        };
+      }
     }
-    // Para citas futuras según días restantes
-    if (daysRemaining < 5) {
-      return colors.red;
-    } else if (daysRemaining <= 15) {
-      return colors.yellow;
-    } else {
-      return colors.black;
+
+    // Si no hay fecha inicio, usar solo fecha fin
+    if (!startDate) {
+      // Si aún no llega la fecha fin = DÍAS RESTANTES
+      if (today.isBefore(endDate) || today.isSame(endDate)) {
+        const daysRemaining = endDate.diff(today, 'days');
+        if (daysRemaining === 0) return {text: 'Hoy', color: colors.green};
+        if (daysRemaining === 1) return {text: 'Mañana', color: colors.yellow};
+        return {
+          text: `${daysRemaining} días`,
+          color: colors.yellow,
+        };
+      }
     }
+
+    // Fallback - nunca debería llegar aquí
+    return {text: 'Error', color: colors.primary};
+  };
+
+  const getDaysRemainingColor = () => {
+    const status = getCommingStatus();
+    return status?.color || colors.primary;
   };
 
   const getDaysRemainingText = () => {
-    console.log(appointment?.fechaCitaFin);
-    const daysRemaining = formattedAppointment?.daysRemaining || 0;
-    // Si la cita está finalizada desde el historial
-    if (isDoneFromHistory) {
-      return 'Finalizada';
-    }
-    // Si está pendiente de enviar (pasó la fecha)
-    if (moment().isBetween(appointment?.fechaCita, appointment?.fechaCitaFin)) {
-      return 'En curso';
-    }
-    if (moment().isAfter(appointment?.fechaCitaFin)) {
-      return 'Pendiente de enviar';
-    }
-
-    // Para citas futuras
-    if (daysRemaining === 1) {
-      return 'Falta 1 día';
-    }
-
-    if (daysRemaining < 5) {
-      return `Faltan ${daysRemaining} días`;
-    } else if (daysRemaining <= 15) {
-      return `Faltan ${daysRemaining} días`;
-    } else {
-      return `Faltan ${daysRemaining} días`;
-    }
+    const status = getCommingStatus();
+    return status?.text || '';
   };
   const isDone = useMemo(() => {
     return formattedAppointment?.daysRemaining === 0;

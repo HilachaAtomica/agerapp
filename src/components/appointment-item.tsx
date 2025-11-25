@@ -41,6 +41,7 @@ const AppointmentItem = ({
     return daysRemaining >= 0 ? daysRemaining : 0;
   };
 
+  console.log('dias restantes:', getDaysRemaining());
   // Nueva función para obtener el estado de próximas citas
   const getCommingStatus = () => {
     if (!isComming && !isFromHistory) return null;
@@ -62,29 +63,26 @@ const AppointmentItem = ({
     // Lógica para próximas citas (isComming = true)
     if (startDate) {
       // Si estamos entre fecha inicio y fecha fin = EN CURSO
+      if (today.isSame(startDate)) {
+        return {
+          text: 'Hoy',
+          color: colors.green,
+        };
+      }
       if (today.isBetween(startDate, endDate, 'day', '[]')) {
         return {
           text: 'En curso',
-          color: colors.red,
+          color: colors.green,
         };
       }
 
       // Si aún no empieza (fecha inicio futura) = DÍAS RESTANTES
       if (today.isBefore(startDate)) {
         const daysRemaining = startDate.diff(today, 'days');
-        if (daysRemaining === 0) return {text: 'Hoy', color: colors.green};
         if (daysRemaining === 1) return {text: 'Mañana', color: colors.yellow};
         return {
           text: `${daysRemaining} días`,
           color: colors.yellow,
-        };
-      }
-
-      // Si ya pasó la fecha fin = PENDIENTE (no finalizada)
-      if (today.isAfter(endDate)) {
-        return {
-          text: 'Pendiente',
-          color: colors.orange,
         };
       }
     }
@@ -101,13 +99,10 @@ const AppointmentItem = ({
           color: colors.yellow,
         };
       }
-
-      // Si ya pasó la fecha fin = PENDIENTE
-      return {text: 'Pendiente', color: colors.orange};
     }
 
     // Fallback - nunca debería llegar aquí
-    return {text: 'Pendiente', color: colors.orange};
+    return {text: 'Error', color: colors.primary};
   };
 
   const getDaysRemainingColor = () => {
@@ -117,13 +112,9 @@ const AppointmentItem = ({
       return status?.color || colors.primary;
     }
 
-    const daysRemaining = getDaysRemaining();
-    // Si la cita está finalizada, siempre verde
-    if (appointment.isDone) return colors.green;
     // Pendientes de cerrar en rojo
     if (isPending) return colors.red;
-    if (daysRemaining <= 3) return colors.red;
-    if (daysRemaining <= 7) return colors.yellow;
+
     return colors.green;
   };
 

@@ -5,6 +5,7 @@ import {
   Text,
   View,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
@@ -12,7 +13,7 @@ import {AuthStackParamList} from '../../../navigation/navigation.auth';
 import {useColors} from '../../../hooks/hook.color';
 import {AppTabParamList} from '../../../navigation/navigation.app';
 import AppointmentItem from '../../../components/appointment-item';
-import {useCallback} from 'react';
+import {useCallback, useState} from 'react';
 import AppointmentHistoryItem from '../../../components/appintment-history-item';
 import Header from '../../../components/ui/header';
 import {openAppointmentInformationModal} from '../../../utils/utils.global';
@@ -25,24 +26,55 @@ type Props = NativeStackScreenProps<AppTabParamList, 'Home'>;
 
 const Home = ({}: Props) => {
   const colors = useColors();
+  const [refreshing, setRefreshing] = useState(false);
 
   // Obtener datos de las APIs
   const {
     data: upcomingAppointments = [],
     isLoading: loadingUpcoming,
     error: errorUpcoming,
+    refetch: refetchUpcoming,
   } = useGetUpcomingAppointmentsQuery();
 
   const {
     data: pendingAppointments = [],
     isLoading: loadingPending,
     error: errorPending,
+    refetch: refetchPending,
   } = useGetPendingAppointmentsQuery();
+
+  // Función para hacer refetch de todas las APIs
+  const refetchAllApis = useCallback(async () => {
+    try {
+      await Promise.all([refetchUpcoming(), refetchPending()]);
+    } catch (error) {
+      console.error('Error al actualizar las APIs:', error);
+    }
+  }, [refetchUpcoming, refetchPending]);
+
+  // Función para manejar el pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetchAllApis();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchAllApis]);
 
   return (
     <SafeAreaView style={{flex: 1}} edges={['top']}>
       <Header title="Citas" />
-      <ScrollView style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, {color: colors.black}]}>
             Próximas citas
@@ -74,7 +106,7 @@ const Home = ({}: Props) => {
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, {color: colors.black}]}>
-            Pendientes de enviar
+            Pendientes de parte
           </Text>
           {loadingPending ? (
             <View style={styles.loadingContainer}>
@@ -90,7 +122,7 @@ const Home = ({}: Props) => {
                 <AppointmentItem
                   key={index}
                   appointment={item}
-                  iconColor={colors.orange}
+                  iconColor={colors.red}
                   icon="exclamation"
                   isPending
                   onPress={() => openAppointmentInformationModal(item.citaId)}
