@@ -42,6 +42,13 @@ const PhotosModal = ({
   const colors = useColors();
   const [photos, setPhotos] = useState<any[]>([]);
 
+  // Limpiar fotos cuando se cierra el modal
+  useEffect(() => {
+    if (!visible) {
+      setPhotos([]);
+    }
+  }, [visible]);
+
   const selectImg = useCallback(async () => {
     try {
       const options: any = {

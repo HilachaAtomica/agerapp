@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   Modal,
   View,
@@ -34,6 +34,13 @@ const CommentsModal = ({
 }: CommentsModalProps) => {
   const colors = useColors();
   const [comment, setComment] = useState(initialComment);
+
+  // Limpiar comentario cuando se cierra el modal
+  useEffect(() => {
+    if (!visible) {
+      setComment(initialComment || '');
+    }
+  }, [visible, initialComment]);
 
   const handleTextChange = (text: string) => {
     setComment(text);

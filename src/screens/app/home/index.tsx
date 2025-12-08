@@ -6,6 +6,7 @@ import {
   View,
   ActivityIndicator,
   RefreshControl,
+  Pressable,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
@@ -27,6 +28,8 @@ type Props = NativeStackScreenProps<AppTabParamList, 'Home'>;
 const Home = ({}: Props) => {
   const colors = useColors();
   const [refreshing, setRefreshing] = useState(false);
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  const [showAllPending, setShowAllPending] = useState(false);
 
   // Obtener datos de las APIs
   const {
@@ -76,9 +79,18 @@ const Home = ({}: Props) => {
           />
         }>
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, {color: colors.black}]}>
-            Próximas citas
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, {color: colors.black}]}>
+              Próximas citas
+            </Text>
+            {upcomingAppointments.length > 3 && (
+              <Pressable onPress={() => setShowAllUpcoming(!showAllUpcoming)}>
+                <Text style={[styles.seeMoreText, {color: colors.primary}]}>
+                  {showAllUpcoming ? 'Ver menos' : 'Ver más'}
+                </Text>
+              </Pressable>
+            )}
+          </View>
           {loadingUpcoming ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={colors.primary} />
@@ -88,7 +100,7 @@ const Home = ({}: Props) => {
             </View>
           ) : upcomingAppointments.length > 0 ? (
             upcomingAppointments
-              .slice(0, 3)
+              .slice(0, showAllUpcoming ? upcomingAppointments.length : 3)
               .map((item, index) => (
                 <AppointmentItem
                   key={index}
@@ -105,9 +117,18 @@ const Home = ({}: Props) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, {color: colors.black}]}>
-            Pendientes de parte
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, {color: colors.black}]}>
+              Pendientes de parte
+            </Text>
+            {pendingAppointments.length > 3 && (
+              <Pressable onPress={() => setShowAllPending(!showAllPending)}>
+                <Text style={[styles.seeMoreText, {color: colors.primary}]}>
+                  {showAllPending ? 'Ver menos' : 'Ver más'}
+                </Text>
+              </Pressable>
+            )}
+          </View>
           {loadingPending ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={colors.primary} />
@@ -117,7 +138,7 @@ const Home = ({}: Props) => {
             </View>
           ) : pendingAppointments.length > 0 ? (
             pendingAppointments
-              .slice(0, 3)
+              .slice(0, showAllPending ? pendingAppointments.length : 3)
               .map((item, index) => (
                 <AppointmentItem
                   key={index}
@@ -147,10 +168,19 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 8,
+  },
+  seeMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   loadingContainer: {
     flexDirection: 'row',

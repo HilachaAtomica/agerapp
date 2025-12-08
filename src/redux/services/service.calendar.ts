@@ -32,11 +32,18 @@ export const calendarApi = createApi({
       providesTags: ['Appointment'],
     }),
     getAppointmentsHistory: builder.query<
-      Appointment[],
-      {offset: number; limit: number}
+      {content: Appointment[]; totalPages: number; number: number},
+      {page: number; size: number}
     >({
-      query: ({offset, limit}) =>
-        `citasHistorial?offset=${offset}&limit=${limit}`,
+      query: ({page, size}) => `citasHistorial?page=${page}&size=${size}`,
+      providesTags: ['Appointment'],
+    }),
+    searchCitas: builder.query<
+      {content: Appointment[]; totalPages: number; number: number},
+      {filtro: string; page: number; size: number}
+    >({
+      query: ({filtro, page, size}) =>
+        `buscar?filtro=${encodeURIComponent(filtro)}&page=${page}&size=${size}`,
       providesTags: ['Appointment'],
     }),
     // POST endpoints para subir archivos
@@ -88,6 +95,7 @@ export const {
   useGetUpcomingAppointmentsQuery,
   useGetPendingAppointmentsQuery,
   useGetAppointmentsHistoryQuery,
+  useSearchCitasQuery,
   useUploadBudgetMutation,
   useUploadSignaturesMutation,
   useUploadCommentsMutation,

@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useState, useEffect} from 'react';
 import {
   Modal,
   View,
@@ -43,6 +43,14 @@ const BudgetModal = ({
   const colors = useColors();
   const [budgetText, setBudgetText] = useState(initialBudget || '');
   const [document, setDocument] = useState<any>();
+
+  // Limpiar estado cuando se cierra el modal
+  useEffect(() => {
+    if (!visible) {
+      setBudgetText(initialBudget || '');
+      setDocument(undefined);
+    }
+  }, [visible, initialBudget]);
 
   const uploadFile = async () => {
     try {

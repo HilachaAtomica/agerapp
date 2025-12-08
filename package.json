@@ -21,6 +21,8 @@
     "react-native": "0.79.2",
     "react-native-calendars": "^1.1312.0",
     "react-native-fast-image": "^8.6.3",
+    "react-native-file-viewer": "^2.1.5",
+    "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "^2.25.0",
     "react-native-image-picker": "^8.2.1",
     "react-native-permissions": "^5.4.0",

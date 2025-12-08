@@ -17,12 +17,20 @@ export interface Contact {
   contactoRol: string;
 }
 
+export interface ArchivoVisible {
+  name: string;
+  url: string;
+  contentType: string;
+  size: number;
+}
+
 export interface AppointmentDetail {
   citaId: number;
   expedienteId: number;
   domicilioCliente: string;
   localidadCliente: string;
   info: string;
+  tipoCita?: string;
   fechaCita: string;
   fechaCitaFin: string;
   contactos: Contact[];
@@ -31,4 +39,5 @@ export interface AppointmentDetail {
   tienePresupuesto?: boolean;
   tieneComentarios?: boolean;
   isDone?: boolean;
+  archivosVisibles?: ArchivoVisible[];
 }

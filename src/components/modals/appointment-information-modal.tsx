@@ -5,6 +5,7 @@ import {
   useImperativeHandle,
   useMemo,
   useState,
+  useEffect,
 } from 'react';
 import {
   Alert,
@@ -17,6 +18,8 @@ import {
   StyleSheet,
   View,
   ActivityIndicator,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import {useColors} from '../../hooks/hook.color';
 import Button from '../ui/button';
@@ -42,6 +45,7 @@ import {
   useCloseCitaMutation,
   useGetAppointmentInfoQuery,
 } from '../../redux/services/service.calendar';
+import {API_URL} from '../../constants/constants.api';
 
 export type AppointmentInformationModalMethods = {
   open: (appointment: {citaId: number; isDone?: boolean}) => void;
@@ -78,8 +82,11 @@ const AppointmentInformationModal = (
     error: errorAppointment,
   } = useGetAppointmentInfoQuery(citaId!, {
     skip: !citaId,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+    refetchOnMountOrArgChange: true,
   });
-
+  console.log('Datos de la cita obtenidos:', appointment);
   // Mutations para subir archivos
   const [uploadBudget, {isLoading: uploadingBudget}] =
     useUploadBudgetMutation();
@@ -117,6 +124,33 @@ const AppointmentInformationModal = (
   };
 
   const formattedAppointment = getFormattedAppointment();
+
+  // Cuando la API devuelve la cita, setear los estados locales con la información disponible
+  useEffect(() => {
+    if (!appointment) return;
+
+    // Comentario / descripción
+    setComment(appointment.info ?? '');
+
+    // Presupuesto: intentar leer campo de texto si el backend indicó que existe
+    const possibleBudgetText =
+      // @ts-ignore
+      appointment.presupuestoTexto ||
+      appointment.presupuesto ||
+      (appointment as any).budgetText ||
+      '';
+
+    if (appointment.tienePresupuesto) {
+      setBudget({text: possibleBudgetText ?? '', documents: undefined});
+    } else {
+      setBudget(null);
+    }
+
+    // Fotos y firmas: no descargamos ficheros automáticamente aquí
+    setPhotos([]);
+    // @ts-ignore
+    setSignature(appointment.firma || (appointment as any).signature || null);
+  }, [appointment]);
 
   // Determinar si la cita está lista (tiene todos los archivos necesarios)
   const isAppointmentReady = () => {
@@ -227,6 +261,97 @@ const AppointmentInformationModal = (
     return formattedAppointment?.daysRemaining === 0;
   }, [formattedAppointment]);
 
+  const guessExt = (name?: string, ct?: string) => {
+    if (name && name.includes('.')) return name.split('.').pop()!.toLowerCase();
+    if (!ct) return 'bin';
+    const map: Record<string, string> = {
+      'application/pdf': 'pdf',
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        'docx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+        'xlsx',
+    };
+    return map[ct] || 'bin';
+  };
+
+  const handleOpenFile = useCallback(
+    async (fileUrl: string, fileName?: string, contentType?: string) => {
+      try {
+        const AsyncStorage =
+          require('@react-native-async-storage/async-storage').default;
+        const token = await AsyncStorage.getItem('@auth/accessToken');
+
+        if (!token) {
+          Alert.alert('Error', 'No se encontró el token de autenticación');
+          return;
+        }
+
+        const RNFS = require('react-native-fs');
+        const FileViewer = require('react-native-file-viewer').default;
+
+        // Convertir URL relativa a absoluta si es necesario
+        let absoluteUrl = fileUrl.startsWith('http')
+          ? fileUrl
+          : `${API_URL}${fileUrl.startsWith('/') ? fileUrl : '/' + fileUrl}`;
+
+        // Forzar HTTPS si viene con HTTP
+        if (absoluteUrl.startsWith('http://')) {
+          absoluteUrl = absoluteUrl.replace('http://', 'https://');
+        }
+
+        const safeName = (fileName || 'archivo').replace(/[^\w.\-]+/g, '_');
+        // Si el nombre ya tiene extensión, usarlo tal cual; si no, añadir extensión
+        const targetPath = safeName.includes('.')
+          ? `${RNFS.CachesDirectoryPath}/${Date.now()}_${safeName}`
+          : `${RNFS.CachesDirectoryPath}/${Date.now()}_${safeName}.${guessExt(
+              fileName,
+              contentType,
+            )}`;
+
+        console.log('[FILE] ====================================');
+        console.log('[FILE] Nombre archivo:', fileName);
+        console.log('[FILE] URL original:', fileUrl);
+        console.log('[FILE] URL absoluta:', absoluteUrl);
+        console.log('[FILE] Destino:', targetPath);
+        console.log('[FILE] Token presente:', !!token);
+        console.log('[FILE] ====================================');
+
+        const res = await RNFS.downloadFile({
+          fromUrl: absoluteUrl,
+          toFile: targetPath,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: '*/*',
+          },
+        }).promise;
+
+        console.log('[FILE] Descarga completada. Status:', res.statusCode);
+        console.log('[FILE] Bytes descargados:', res.bytesWritten);
+
+        if ((res.statusCode ?? 200) >= 400) {
+          console.error('[FILE] Error HTTP:', res.statusCode);
+          Alert.alert(
+            'Error',
+            `Descarga falló (${res.statusCode}). Verifica la URL y los permisos.`,
+          );
+          return;
+        }
+
+        await FileViewer.open(targetPath, {
+          showOpenWithDialog: true,
+          showAppsSuggestions: true,
+        });
+      } catch (err: any) {
+        console.error('[FILE] Error al abrir archivo:', err);
+        Alert.alert('Error', 'No se pudo abrir el archivo.');
+      }
+    },
+    [],
+  );
+
   const handleOpenMaps = useCallback(() => {
     if (formattedAppointment?.address) {
       // Codifica la dirección para URL
@@ -296,10 +421,15 @@ const AppointmentInformationModal = (
     try {
       const formData = new FormData();
 
+      // Agregar siempre el texto del presupuesto al FormData
+      if (budgetText) {
+        formData.append('texto', budgetText);
+      }
+
       // Si hay documentos, los agregamos al FormData
       if (documents) {
         if (Array.isArray(documents)) {
-          documents.forEach((doc: any, index: number) => {
+          documents.forEach((doc: any) => {
             if (doc.uri && doc.name && doc.type) {
               formData.append('files', {
                 uri: doc.uri,
@@ -316,22 +446,16 @@ const AppointmentInformationModal = (
             name: documents.name,
           } as any);
         }
-
-        await uploadBudget({
-          citaId: appointment.citaId,
-          files: formData,
-        }).unwrap();
-
-        setBudget({text: budgetText, documents});
-        Alert.alert('Éxito', 'Presupuesto enviado correctamente');
-      } else {
-        // Si solo hay texto, lo guardamos localmente
-        setBudget({text: budgetText, documents});
-        Alert.alert(
-          'Información',
-          'Texto del presupuesto guardado localmente. Para enviarlo al servidor, adjunte un archivo o foto.',
-        );
       }
+
+      // Enviar siempre el FormData al servidor, aunque no tenga archivos
+      await uploadBudget({
+        citaId: appointment.citaId,
+        files: formData,
+      }).unwrap();
+
+      setBudget({text: budgetText, documents});
+      Alert.alert('Éxito', 'Presupuesto enviado correctamente');
     } catch (error) {
       console.error('Error al enviar presupuesto:', error);
       Alert.alert('Error', 'No se pudo enviar el presupuesto');
@@ -469,6 +593,17 @@ const AppointmentInformationModal = (
         setCitaId(appointmentData.citaId);
         setIsDoneFromHistory(appointmentData.isDone || false);
       }
+
+      // Reset internal states to avoid carrying data between appointments
+      setBudget(null);
+      setPhotos([]);
+      setComment('');
+      setSignature(null);
+      setSignatureModalVisible(false);
+      setBudgetModalVisible(false);
+      setPhotosModalVisible(false);
+      setCommentsModalVisible(false);
+
       setModalVisible(true);
       console.log('Modal visible establecido a true');
     },
@@ -476,9 +611,18 @@ const AppointmentInformationModal = (
   );
 
   const handleClose = useCallback(() => {
+    // Close and reset state
     setModalVisible(false);
     setCitaId(null);
     setIsDoneFromHistory(false);
+    setBudget(null);
+    setPhotos([]);
+    setComment('');
+    setSignature(null);
+    setSignatureModalVisible(false);
+    setBudgetModalVisible(false);
+    setPhotosModalVisible(false);
+    setCommentsModalVisible(false);
   }, []);
 
   useImperativeHandle(ref, () => ({
@@ -536,7 +680,14 @@ const AppointmentInformationModal = (
                   </Pressable>
 
                   <View style={[styles.descriptionRow]}>
-                    <Text fw="semibold">Descripción:</Text>
+                    <Text fw="semibold">
+                      Descripción:{' '}
+                      {appointment?.tipoCita && (
+                        <Text fw="regular" color={colors.grey}>
+                          {appointment.tipoCita}
+                        </Text>
+                      )}
+                    </Text>
                     <Text>{formattedAppointment?.description}</Text>
                   </View>
 
@@ -607,6 +758,45 @@ const AppointmentInformationModal = (
                           keyExtractor={item => item.contactoId.toString()}
                           contentContainerStyle={styles.horizontalContactsList}
                         />
+                      </View>
+                    )}
+
+                  {appointment?.archivosVisibles &&
+                    appointment.archivosVisibles.length > 0 && (
+                      <View style={styles.filesSection}>
+                        <Text fw="bold" style={styles.filesSectionTitle}>
+                          Archivos Visibles
+                        </Text>
+                        {appointment.archivosVisibles.map((archivo, index) => (
+                          <Pressable
+                            key={index}
+                            style={styles.fileItem}
+                            onPress={() =>
+                              handleOpenFile(
+                                archivo.url,
+                                archivo.name,
+                                archivo.contentType,
+                              )
+                            }>
+                            <View style={styles.fileInfo}>
+                              <AppIcon
+                                name="file"
+                                size={20}
+                                color={colors.primary}
+                              />
+                              <View style={{flex: 1}}>
+                                <Text fw="medium" numberOfLines={1}>
+                                  {archivo.name}
+                                </Text>
+                              </View>
+                            </View>
+                            <AppIcon
+                              name="arrowRight"
+                              size={16}
+                              color={colors.grey}
+                            />
+                          </Pressable>
+                        ))}
                       </View>
                     )}
                 </View>
@@ -887,5 +1077,29 @@ const styles = StyleSheet.create({
   dateTimeText: {
     flex: 1,
     lineHeight: 20,
+  },
+  filesSection: {
+    marginTop: 16,
+    paddingTop: 8,
+  },
+  filesSectionTitle: {
+    fontSize: 20,
+    marginBottom: 12,
+  },
+  fileItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  fileInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
   },
 });

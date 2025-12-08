@@ -1,4 +1,4 @@
-import React, {useRef, useState} from 'react';
+import React, {useRef, useState, useEffect} from 'react';
 import {
   Modal,
   View,
@@ -32,6 +32,18 @@ const SignatureModal = ({
   const colors = useColors();
   const signatureRef = useRef<SignatureViewRef>(null);
   const [signatureExists, setSignatureExists] = useState(false);
+
+  // Limpiar firma cuando se cierra el modal
+  useEffect(() => {
+    if (!visible) {
+      try {
+        signatureRef.current?.clearSignature();
+      } catch (e) {
+        // ignore
+      }
+      setSignatureExists(false);
+    }
+  }, [visible]);
 
   const handleClear = () => {
     signatureRef.current?.clearSignature();

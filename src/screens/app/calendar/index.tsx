@@ -1,4 +1,10 @@
-import {ScrollView, StyleSheet, View, ActivityIndicator} from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {AppTabParamList} from '../../../navigation/navigation.app';
@@ -40,14 +46,39 @@ const CalendarScreen = ({}: Props) => {
   const endOfMonth = moment(currentMonth).endOf('month').format('YYYY-MM-DD');
 
   // Queries para obtener datos de las APIs
-  const {data: daysWithAppointments = [], isLoading: loadingDays} =
-    useGetDaysWithAppointmentsQuery({
-      desde: startOfMonth,
-      hasta: endOfMonth,
-    });
+  const {
+    data: daysWithAppointments = [],
+    isLoading: loadingDays,
+    refetch: refetchDays,
+  } = useGetDaysWithAppointmentsQuery({
+    desde: startOfMonth,
+    hasta: endOfMonth,
+  });
 
-  const {data: appointmentsForDay = [], isLoading: loadingAppointments} =
-    useGetAppointmentsByDayQuery(selectedDate);
+  const {
+    data: appointmentsForDay = [],
+    isLoading: loadingAppointments,
+    refetch: refetchAppointments,
+  } = useGetAppointmentsByDayQuery(selectedDate);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refetchAllApis = useCallback(async () => {
+    try {
+      await Promise.all([refetchDays(), refetchAppointments()]);
+    } catch (error) {
+      console.error('Error al actualizar las APIs del calendario:', error);
+    }
+  }, [refetchDays, refetchAppointments]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetchAllApis();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchAllApis]);
 
   useEffect(() => {
     const marked: any = {};
@@ -82,102 +113,112 @@ const CalendarScreen = ({}: Props) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Header title="Calendario" />
+      <ScrollView
+        contentContainerStyle={{flexGrow: 1}}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }>
+        <Header title="Calendario" />
 
-      <View style={{padding: 16}}>
-        <Calendar
-          style={{borderRadius: 8}}
-          markingType="multi-dot"
-          markedDates={markedDates}
-          onDayPress={handleSelectDay}
-          onMonthChange={handleMonthChange}
-          hideExtraDays={true}
-          firstDay={1}
-          renderArrow={direction =>
-            direction === 'left' ? (
-              <AppIcon name="arrowLeft" size={20} color={colors.primary} />
-            ) : (
-              <AppIcon name="arrowRight" size={20} color={colors.primary} />
-            )
-          }
-          disableAllTouchEventsForDisabledDays={true}
-          enableSwipeMonths={true}
-          theme={{
-            todayTextColor: colors.primary,
-            textSectionTitleColor: colors.primary,
-            selectedDayBackgroundColor: colors.primary,
-            dayTextColor: colors.black,
-            textDisabledColor: colors.grey,
-            monthTextColor: colors.primary,
-            'stylesheet.dot': {
-              dot: {
-                width: 12,
-                height: 12,
-                marginTop: 1,
-                marginLeft: 1,
-                marginRight: 1,
-                borderRadius: 6,
+        <View style={{padding: 16}}>
+          <Calendar
+            style={{borderRadius: 8}}
+            markingType="multi-dot"
+            markedDates={markedDates}
+            onDayPress={handleSelectDay}
+            onMonthChange={handleMonthChange}
+            hideExtraDays={true}
+            firstDay={1}
+            renderArrow={direction =>
+              direction === 'left' ? (
+                <AppIcon name="arrowLeft" size={20} color={colors.primary} />
+              ) : (
+                <AppIcon name="arrowRight" size={20} color={colors.primary} />
+              )
+            }
+            disableAllTouchEventsForDisabledDays={true}
+            enableSwipeMonths={true}
+            theme={{
+              todayTextColor: colors.primary,
+              textSectionTitleColor: colors.primary,
+              selectedDayBackgroundColor: colors.primary,
+              dayTextColor: colors.black,
+              textDisabledColor: colors.grey,
+              monthTextColor: colors.primary,
+              'stylesheet.dot': {
+                dot: {
+                  width: 12,
+                  height: 12,
+                  marginTop: 1,
+                  marginLeft: 1,
+                  marginRight: 1,
+                  borderRadius: 6,
+                },
               },
-            },
-          }}
-          renderHeader={() => (
-            <Text
-              style={{
-                textTransform: 'capitalize',
-                fontSize: 20,
-                fontWeight: 'bold',
-                color: colors.primary,
-              }}>
-              {moment(currentMonth).format('MMMM YYYY')}
-            </Text>
-          )}
-        />
+            }}
+            renderHeader={() => (
+              <Text
+                style={{
+                  textTransform: 'capitalize',
+                  fontSize: 20,
+                  fontWeight: 'bold',
+                  color: colors.primary,
+                }}>
+                {moment(currentMonth).format('MMMM YYYY')}
+              </Text>
+            )}
+          />
 
-        {loadingDays && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={[styles.loadingText, {color: colors.grey}]}>
-              Cargando calendario...
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.appointmentsSection}>
-        <Text style={styles.dateTitle}>
-          {moment(selectedDate).format('dddd, D [de] MMMM')}
-        </Text>
-
-        <ScrollView
-          style={styles.appointmentsList}
-          contentContainerStyle={{gap: 12}}>
-          {loadingAppointments ? (
+          {loadingDays && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
+              <ActivityIndicator size="small" color={colors.primary} />
               <Text style={[styles.loadingText, {color: colors.grey}]}>
-                Cargando citas...
-              </Text>
-            </View>
-          ) : filteredAppointments.length > 0 ? (
-            filteredAppointments.map((appointment, index) => (
-              <AppointmentItem
-                key={index}
-                appointment={appointment}
-                onPress={() =>
-                  openAppointmentInformationModal(appointment.citaId)
-                }
-              />
-            ))
-          ) : (
-            <View style={styles.noAppointmentsContainer}>
-              <AppIcon name="calendar" size={48} color={colors.grey} />
-              <Text style={styles.noAppointments}>
-                No hay citas programadas para esta fecha
+                Cargando calendario...
               </Text>
             </View>
           )}
-        </ScrollView>
-      </View>
+        </View>
+
+        <View style={styles.appointmentsSection}>
+          <Text style={styles.dateTitle}>
+            {moment(selectedDate).format('dddd, D [de] MMMM')}
+          </Text>
+
+          <View style={styles.appointmentsList}>
+            {loadingAppointments ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[styles.loadingText, {color: colors.grey}]}>
+                  Cargando citas...
+                </Text>
+              </View>
+            ) : filteredAppointments.length > 0 ? (
+              filteredAppointments.map((appointment, index) => (
+                <AppointmentItem
+                  key={index}
+                  style={{marginBottom: 12}}
+                  appointment={appointment}
+                  onPress={() =>
+                    openAppointmentInformationModal(appointment.citaId)
+                  }
+                />
+              ))
+            ) : (
+              <View style={styles.noAppointmentsContainer}>
+                <AppIcon name="calendar" size={48} color={colors.grey} />
+                <Text style={styles.noAppointments}>
+                  No hay citas programadas para esta fecha
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };

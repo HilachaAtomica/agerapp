@@ -1,4 +1,4 @@
-import {Pressable, StyleSheet, View} from 'react-native';
+import {Pressable, StyleProp, StyleSheet, View} from 'react-native';
 import {useColors} from '../hooks/hook.color';
 import {Appointment} from '../models/calendar';
 import Text from './ui/text';
@@ -9,6 +9,7 @@ type Props = {
   appointment: Appointment;
   onPress?: () => void;
   icon?: IconNameProp;
+  style?: StyleProp<any>;
   iconColor?: string;
   isPending?: boolean;
   isComming?: boolean; // Nueva prop para próximas citas
@@ -22,6 +23,7 @@ const AppointmentItem = ({
   iconColor,
   isPending,
   isComming,
+  style,
   isFromHistory,
 }: Props) => {
   const colors = useColors();
@@ -171,7 +173,7 @@ const AppointmentItem = ({
 
   return (
     <Pressable
-      style={[styles.container, {backgroundColor: colors.white}]}
+      style={[styles.container, {backgroundColor: colors.white}, style]}
       onPress={onPress}>
       <View style={styles.header}>
         <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
