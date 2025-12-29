@@ -1,5 +1,5 @@
 import {StyleSheet, View} from 'react-native';
-
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useColors} from '../../../../hooks/hook.color';
 
@@ -21,7 +21,7 @@ const Settings = ({navigation}: Props) => {
   }, [logout]);
 
   return (
-    <View style={{flex: 1}}>
+    <SafeAreaView style={{flex: 1}} edges={['top', 'bottom']}>
       <Header title="Cuenta" />
       <View style={styles.contentContainer}>
         <View style={[styles.section, {backgroundColor: colors.white}]}>
@@ -40,7 +40,7 @@ const Settings = ({navigation}: Props) => {
           />
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 

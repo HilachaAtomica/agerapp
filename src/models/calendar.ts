@@ -40,4 +40,9 @@ export interface AppointmentDetail {
   tieneComentarios?: boolean;
   isDone?: boolean;
   archivosVisibles?: ArchivoVisible[];
+  archivosPresupuestos?: ArchivoVisible[];
+  archivosFotos?: ArchivoVisible[];
+  pathPresupuestos?: string;
+  pathFotos?: string;
+  pathFirmas?: string;
 }

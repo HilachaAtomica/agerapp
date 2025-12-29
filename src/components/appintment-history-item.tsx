@@ -1,6 +1,7 @@
 import {Pressable, StyleSheet, View} from 'react-native';
 import {useColors} from '../hooks/hook.color';
-
+import moment from 'moment';
+import 'moment/locale/es';
 import Text from './ui/text';
 import AppIcon from './icons';
 import {Appointment} from '../models/calendar';
@@ -12,6 +13,13 @@ type Props = {
 
 const AppointmentHistoryItem = ({appointment, onPress}: Props) => {
   const colors = useColors();
+
+  moment.locale('es');
+
+  // Formatear la fecha correctamente
+  const formattedDate = appointment.fechaCitaFin
+    ? moment(appointment.fechaCitaFin).format('DD/MM/YYYY HH:mm')
+    : 'Sin fecha';
 
   return (
     <Pressable
@@ -30,7 +38,7 @@ const AppointmentHistoryItem = ({appointment, onPress}: Props) => {
         <Text color={colors.grey} numberOfLines={2}>
           {appointment.domicilioCliente}
         </Text>
-        <Text color={colors.grey}>{appointment.fechaCitaFin}</Text>
+        <Text color={colors.grey}>{formattedDate}</Text>
       </View>
     </Pressable>
   );

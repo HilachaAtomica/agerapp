@@ -129,8 +129,8 @@ const AppointmentInformationModal = (
   useEffect(() => {
     if (!appointment) return;
 
-    // Comentario / descripción
-    setComment(appointment.info ?? '');
+    // Comentario: iniciar vacío, los comentarios son del operario, no la descripción de la cita
+    setComment('');
 
     // Presupuesto: intentar leer campo de texto si el backend indicó que existe
     const possibleBudgetText =
@@ -340,9 +340,12 @@ const AppointmentInformationModal = (
           return;
         }
 
+        // Abrir directamente con la app predeterminada
+        const mimeType = contentType || 'application/pdf';
         await FileViewer.open(targetPath, {
-          showOpenWithDialog: true,
-          showAppsSuggestions: true,
+          displayName: safeName,
+          showOpenWithDialog: false,
+          showAppsSuggestions: false,
         });
       } catch (err: any) {
         console.error('[FILE] Error al abrir archivo:', err);
@@ -356,46 +359,21 @@ const AppointmentInformationModal = (
     if (formattedAppointment?.address) {
       // Codifica la dirección para URL
       const encodedAddress = encodeURIComponent(formattedAppointment.address);
-
-      // Mostrar opciones para abrir en Maps o Waze
-      Alert.alert(
-        'Abrir dirección',
-        '¿Con qué aplicación deseas abrir la dirección?',
-        [
-          {
-            text: 'Google Maps',
-            onPress: () => {
-              const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-              Linking.openURL(googleMapsUrl).catch(err => {
-                console.error('Error al abrir Google Maps:', err);
-                Alert.alert('Error', 'No se pudo abrir Google Maps');
-              });
-            },
-          },
-          {
-            text: 'Waze',
-            onPress: () => {
-              const wazeUrl = `waze://?q=${encodedAddress}`;
-              Linking.canOpenURL(wazeUrl).then(supported => {
-                if (supported) {
-                  Linking.openURL(wazeUrl);
-                } else {
-                  // Si Waze no está instalado, abrir en la web
-                  const wazeWebUrl = `https://www.waze.com/ul?q=${encodedAddress}&navigate=yes`;
-                  Linking.openURL(wazeWebUrl).catch(err => {
-                    console.error('Error al abrir Waze:', err);
-                    Alert.alert('Error', 'Waze no está instalado');
-                  });
-                }
-              });
-            },
-          },
-          {
-            text: 'Cancelar',
-            style: 'cancel',
-          },
-        ],
-      );
+      
+      // Usar el esquema geo: que permite al sistema mostrar todas las apps de mapas disponibles
+      const mapsUrl = Platform.OS === 'ios' 
+        ? `maps:0,0?q=${encodedAddress}`
+        : `geo:0,0?q=${encodedAddress}`;
+      
+      Linking.openURL(mapsUrl).catch(err => {
+        // Si falla, intentar con Google Maps como fallback
+        console.error('Error al abrir con selector nativo:', err);
+        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+        Linking.openURL(googleMapsUrl).catch(error => {
+          console.error('Error al abrir Google Maps:', error);
+          Alert.alert('Error', 'No se pudo abrir la aplicación de mapas');
+        });
+      });
     }
   }, [formattedAppointment]);
 
@@ -761,44 +739,48 @@ const AppointmentInformationModal = (
                       </View>
                     )}
 
-                  {appointment?.archivosVisibles &&
-                    appointment.archivosVisibles.length > 0 && (
-                      <View style={styles.filesSection}>
-                        <Text fw="bold" style={styles.filesSectionTitle}>
-                          Archivos Visibles
-                        </Text>
-                        {appointment.archivosVisibles.map((archivo, index) => (
-                          <Pressable
-                            key={index}
-                            style={styles.fileItem}
-                            onPress={() =>
-                              handleOpenFile(
-                                archivo.url,
-                                archivo.name,
-                                archivo.contentType,
-                              )
-                            }>
-                            <View style={styles.fileInfo}>
-                              <AppIcon
-                                name="file"
-                                size={20}
-                                color={colors.primary}
-                              />
-                              <View style={{flex: 1}}>
-                                <Text fw="medium" numberOfLines={1}>
-                                  {archivo.name}
-                                </Text>
-                              </View>
-                            </View>
-                            <AppIcon
-                              name="arrowRight"
-                              size={16}
-                              color={colors.grey}
-                            />
-                          </Pressable>
-                        ))}
+                  {appointment?.archivosVisibles?.length > 0 && (
+                    <Pressable
+                      style={[
+                        styles.attachmentsButton,
+                        {
+                          backgroundColor: colors.primary + '10',
+                          borderColor: colors.primary,
+                        },
+                      ]}
+                      onPress={() => {
+                        // Solo ocultar el modal, no cerrarlo completamente
+                        setModalVisible(false);
+                        // Navegar a la pantalla de attachments con el citaId
+                        setTimeout(() => {
+                          NavigationUtil.navigate('Attachments', {
+                            archivosVisibles: appointment?.archivosVisibles || [],
+                            archivosFotos: [],
+                            archivosPresupuestos: [],
+                            citaId: citaId,
+                            isDoneFromHistory: isDoneFromHistory,
+                          });
+                        }, 100);
+                      }}>
+                      <View style={styles.attachmentsButtonContent}>
+                        <AppIcon name="file" size={24} color={colors.primary} />
+                        <View style={{flex: 1}}>
+                          <Text fw="semibold" color={colors.primary} style={{fontSize: 16}}>
+                            Archivos adjuntos AGER
+                          </Text>
+                          <Text color={colors.grey} style={{fontSize: 14}}>
+                            {appointment?.archivosVisibles?.length || 0}{' '}
+                            archivo(s)
+                          </Text>
+                        </View>
+                        <AppIcon
+                          name="arrowRight"
+                          size={20}
+                          color={colors.primary}
+                        />
                       </View>
-                    )}
+                    </Pressable>
+                  )}
                 </View>
 
                 <View style={{gap: 12}}>
@@ -810,14 +792,52 @@ const AppointmentInformationModal = (
                     onPress={handleOpenBudgetModal}>
                     <Text style={{fontSize: 18}}>Presupuesto</Text>
                     <AppIcon
-                      name={
-                        appointment?.tienePresupuesto || budget
-                          ? 'check'
-                          : 'plus'
-                      }
+                      name="plus"
                       color={colors.primary}
                     />
                   </Pressable>
+
+                  {appointment?.archivosPresupuestos?.length > 0 && (
+                    <Pressable
+                      style={[
+                        styles.attachmentsButton,
+                        {
+                          backgroundColor: colors.primary + '10',
+                          borderColor: colors.primary,
+                          marginTop: 8,
+                        },
+                      ]}
+                      onPress={() => {
+                        setModalVisible(false);
+                        setTimeout(() => {
+                          NavigationUtil.navigate('Attachments', {
+                            archivosVisibles: [],
+                            archivosFotos: [],
+                            archivosPresupuestos: appointment?.archivosPresupuestos || [],
+                            citaId: citaId,
+                            isDoneFromHistory: isDoneFromHistory,
+                          });
+                        }, 100);
+                      }}>
+                      <View style={styles.attachmentsButtonContent}>
+                        <AppIcon name="file" size={20} color={colors.primary} />
+                        <View style={{flex: 1}}>
+                          <Text fw="semibold" color={colors.primary} style={{fontSize: 14}}>
+                            Ver presupuestos enviados por mi
+                          </Text>
+                          <Text color={colors.grey} style={{fontSize: 12}}>
+                            {appointment?.archivosPresupuestos?.length || 0}{' '}
+                            archivo(s)
+                          </Text>
+                        </View>
+                        <AppIcon
+                          name="arrowRight"
+                          size={16}
+                          color={colors.primary}
+                        />
+                      </View>
+                    </Pressable>
+                  )}
 
                   <Pressable
                     style={[
@@ -827,14 +847,52 @@ const AppointmentInformationModal = (
                     onPress={handleOpenPhotosModal}>
                     <Text style={{fontSize: 18}}>Fotos</Text>
                     <AppIcon
-                      name={
-                        appointment?.tieneFotos || photos.length > 0
-                          ? 'check'
-                          : 'plus'
-                      }
+                      name="plus"
                       color={colors.primary}
                     />
                   </Pressable>
+
+                  {appointment?.archivosFotos?.length > 0 && (
+                    <Pressable
+                      style={[
+                        styles.attachmentsButton,
+                        {
+                          backgroundColor: colors.primary + '10',
+                          borderColor: colors.primary,
+                          marginTop: 8,
+                        },
+                      ]}
+                      onPress={() => {
+                        setModalVisible(false);
+                        setTimeout(() => {
+                          NavigationUtil.navigate('Attachments', {
+                            archivosVisibles: [],
+                            archivosFotos: appointment?.archivosFotos || [],
+                            archivosPresupuestos: [],
+                            citaId: citaId,
+                            isDoneFromHistory: isDoneFromHistory,
+                          });
+                        }, 100);
+                      }}>
+                      <View style={styles.attachmentsButtonContent}>
+                        <AppIcon name="image" size={20} color={colors.primary} />
+                        <View style={{flex: 1}}>
+                          <Text fw="semibold" color={colors.primary} style={{fontSize: 14}}>
+                            Ver fotos enviadas por mi
+                          </Text>
+                          <Text color={colors.grey} style={{fontSize: 12}}>
+                            {appointment?.archivosFotos?.length || 0}{' '}
+                            foto(s)
+                          </Text>
+                        </View>
+                        <AppIcon
+                          name="arrowRight"
+                          size={16}
+                          color={colors.primary}
+                        />
+                      </View>
+                    </Pressable>
+                  )}
 
                   <Pressable
                     style={[
@@ -861,12 +919,53 @@ const AppointmentInformationModal = (
                     onPress={handleOpenSignatureModal}>
                     <Text style={{fontSize: 18}}>Firmas</Text>
                     <AppIcon
-                      name={
-                        appointment?.tieneFirmas || signature ? 'check' : 'plus'
-                      }
+                      name="plus"
                       color={colors.primary}
                     />
                   </Pressable>
+
+                  {appointment?.archivosFirmas?.length > 0 && (
+                    <Pressable
+                      style={[
+                        styles.attachmentsButton,
+                        {
+                          backgroundColor: colors.primary + '10',
+                          borderColor: colors.primary,
+                          marginTop: 8,
+                        },
+                      ]}
+                      onPress={() => {
+                        setModalVisible(false);
+                        setTimeout(() => {
+                          NavigationUtil.navigate('Attachments', {
+                            archivosVisibles: [],
+                            archivosFotos: [],
+                            archivosPresupuestos: [],
+                            archivosFirmas: appointment?.archivosFirmas || [],
+                            citaId: citaId,
+                            isDoneFromHistory: isDoneFromHistory,
+                          });
+                        }, 100);
+                      }}>
+                      <View style={styles.attachmentsButtonContent}>
+                        <AppIcon name="file" size={20} color={colors.primary} />
+                        <View style={{flex: 1}}>
+                          <Text fw="semibold" color={colors.primary} style={{fontSize: 14}}>
+                            Ver firmas enviadas por mi
+                          </Text>
+                          <Text color={colors.grey} style={{fontSize: 12}}>
+                            {appointment?.archivosFirmas?.length || 0}{' '}
+                            firma(s)
+                          </Text>
+                        </View>
+                        <AppIcon
+                          name="arrowRight"
+                          size={16}
+                          color={colors.primary}
+                        />
+                      </View>
+                    </Pressable>
+                  )}
                 </View>
               </>
             )}
@@ -1101,5 +1200,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     flex: 1,
+  },
+  attachmentsButton: {
+    marginTop: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
+  },
+  attachmentsButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
 });

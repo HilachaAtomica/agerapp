@@ -66,7 +66,7 @@ const Home = ({}: Props) => {
   }, [refetchAllApis]);
 
   return (
-    <SafeAreaView style={{flex: 1}} edges={['top']}>
+    <SafeAreaView style={{flex: 1}} edges={['top', 'bottom']}>
       <Header title="Citas" />
       <ScrollView
         style={styles.container}

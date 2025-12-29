@@ -3,9 +3,9 @@ import {
   StyleSheet,
   View,
   ActivityIndicator,
-  SafeAreaView,
   Pressable,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useColors} from '../../../../hooks/hook.color';
 import Header from '../../../../components/ui/header';
@@ -176,7 +176,7 @@ const AppointmentHistory = ({navigation}: Props) => {
     );
   }, [isLoading, colors]);
   return (
-    <SafeAreaView style={{flex: 1, backgroundColor: colors.white}}>
+    <SafeAreaView style={{flex: 1, backgroundColor: colors.white}} edges={['top', 'bottom']}>
       <Header title="Historial de citas" goBack={navigation.goBack} />
       <View style={styles.searchContainer}>
         <Input

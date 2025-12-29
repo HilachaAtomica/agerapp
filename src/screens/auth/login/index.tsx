@@ -1,4 +1,11 @@
-import {StyleSheet, View, Alert} from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {AuthStackParamList} from '../../../navigation/navigation.auth';
 import {useColors} from '../../../hooks/hook.color';
@@ -12,6 +19,7 @@ import * as NavigationUtil from '../../../utils/utils.navigation';
 import {useLoginMutation} from '../../../redux/services/service.auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {ACCESS_TOKEN_KEY} from '../../../constants/constants.api';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 export type LoginPayload = {
   username: string;
@@ -86,78 +94,100 @@ const Login = ({}: Props) => {
   );
 
   return (
-    <View style={[styles.main, {backgroundColor: colors.primary}]}>
-      <FastImage
-        resizeMode="contain"
-        source={require('../../../assets/images/marca.png')}
-        style={styles.image}
-      />
-      <View style={[styles.bot, {backgroundColor: colors.white}]}>
-        <Text
-          color={colors.black}
-          style={{fontSize: 22, textAlign: 'center'}}
-          fw="semibold">
-          Iniciar sesión
-        </Text>
-        <View style={styles.inputContainer}>
-          <Input
-            onChange={text => setValue('username', text)}
-            value={username}
-            label="Usuario"
-            leftIcon="email"
-            placeholder="Usuario"
-          />
+    <View style={[styles.container, {backgroundColor: colors.primary}]}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}>
+            <FastImage
+              resizeMode="contain"
+              source={require('../../../assets/images/marca.png')}
+              style={styles.image}
+            />
+            <View style={[styles.bot, {backgroundColor: colors.white}]}>
+              <Text
+                color={colors.black}
+                style={{fontSize: 22, textAlign: 'center'}}
+                fw="semibold">
+                Iniciar sesión
+              </Text>
+              <View style={styles.inputContainer}>
+                <Input
+                  onChange={text => setValue('username', text)}
+                  value={username}
+                  label="Usuario"
+                  leftIcon="email"
+                  placeholder="Usuario"
+                />
 
-          <Input
-            onChange={text => setValue('password', text)}
-            value={password}
-            type="password"
-            label="Contraseña"
-            leftIcon="padlock"
-            placeholder="Contraseña"
-          />
-          {error && (
-            <Text
-              style={{width: '100%', textAlign: 'center', marginTop: 8}}
-              fw="medium"
-              color="red">
-              {error}
-            </Text>
-          )}
-        </View>
-        <Button
-          onPress={handleSubmit(onSubmit)}
-          style={{marginHorizontal: 24, marginTop: 'auto'}}
-          size="md"
-          disabled={isDisabled}>
-          {isLoading ? 'Iniciando...' : 'Iniciar'}
-        </Button>
-      </View>
+                <Input
+                  onChange={text => setValue('password', text)}
+                  value={password}
+                  type="password"
+                  label="Contraseña"
+                  leftIcon="padlock"
+                  placeholder="Contraseña"
+                />
+                {error && (
+                  <Text
+                    style={{width: '100%', textAlign: 'center', marginTop: 8}}
+                    fw="medium"
+                    color="red">
+                    {error}
+                  </Text>
+                )}
+              </View>
+              <Button
+                onPress={handleSubmit(onSubmit)}
+                style={{marginHorizontal: 24, marginTop: 32}}
+                size="md"
+                disabled={isDisabled}>
+                {isLoading ? 'Iniciando...' : 'Iniciar'}
+              </Button>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  main: {
+  container: {
     flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     alignItems: 'center',
   },
   image: {
     width: 250,
     height: 121,
-    marginVertical: 72,
+    marginVertical: 48,
   },
   inputContainer: {
-    marginTop: 48,
+    marginTop: 32,
     gap: 24,
   },
   bot: {
-    flex: 1,
     width: '100%',
+    minHeight: 400,
     marginTop: 'auto',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingVertical: 24,
+    paddingTop: 24,
+    paddingBottom: 32,
     paddingHorizontal: 16,
   },
 });

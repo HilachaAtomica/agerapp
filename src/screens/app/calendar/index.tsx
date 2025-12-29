@@ -112,7 +112,7 @@ const CalendarScreen = ({}: Props) => {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView
         contentContainerStyle={{flexGrow: 1}}
         refreshControl={

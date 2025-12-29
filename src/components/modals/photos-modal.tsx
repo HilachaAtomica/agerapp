@@ -314,6 +314,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
+  section: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    marginBottom: 8,
+  },
   photoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -336,8 +343,12 @@ const styles = StyleSheet.create({
     top: 5,
     right: 5,
     width: 24,
+    top: 5,
+    right: 5,
+    width: 24,
     height: 24,
     borderRadius: 12,
+    backgroundColor: '#4CAF50',
     justifyContent: 'center',
     alignItems: 'center',
   },

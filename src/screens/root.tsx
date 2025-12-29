@@ -10,6 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {ACCESS_TOKEN_KEY} from '../constants/constants.api';
 import {ActivityIndicator, View} from 'react-native';
 import {useColors} from '../hooks/hook.color';
+import AttachmentsScreen from './app/attachments';
+import {ArchivoVisible} from '../models/calendar';
 
 export type RootStackParamList = {
   Auth: {
@@ -22,6 +24,13 @@ export type RootStackParamList = {
       | AppTabParamList['Home']
       | AppTabParamList['Account']
       | AppTabParamList['Calendar'];
+  };
+  Attachments: {
+    archivosVisibles?: ArchivoVisible[];
+    archivosFotos?: ArchivoVisible[];
+    archivosPresupuestos?: ArchivoVisible[];
+    citaId?: number;
+    isDoneFromHistory?: boolean;
   };
 };
 
@@ -80,6 +89,7 @@ const RootNavigation = () => {
         }}>
         <RootStack.Screen component={AuthNavigation} name="Auth" />
         <RootStack.Screen component={AppNavigation} name="App" />
+        <RootStack.Screen component={AttachmentsScreen} name="Attachments" />
       </RootStack.Navigator>
     </NavigationContainer>
   );
