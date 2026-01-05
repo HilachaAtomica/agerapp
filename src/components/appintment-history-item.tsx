@@ -18,7 +18,14 @@ const AppointmentHistoryItem = ({appointment, onPress}: Props) => {
 
   // Formatear la fecha correctamente
   const formattedDate = appointment.fechaCitaFin
-    ? moment(appointment.fechaCitaFin).format('DD/MM/YYYY HH:mm')
+    ? (() => {
+        const fechaFinMoment = moment(appointment.fechaCitaFin);
+        // Detectar si es "sin hora" (00:00 o 01:00)
+        if ((fechaFinMoment.hour() === 0 || fechaFinMoment.hour() === 1) && fechaFinMoment.minute() === 0) {
+          return `${fechaFinMoment.format('DD/MM/YYYY')} - Sin hora`;
+        }
+        return fechaFinMoment.format('DD/MM/YYYY HH:mm');
+      })()
     : 'Sin fecha';
 
   return (

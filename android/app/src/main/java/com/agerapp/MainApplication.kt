@@ -11,6 +11,8 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
+import com.onesignal.OneSignal
+import com.onesignal.debug.LogLevel
 
 class MainApplication : Application(), ReactApplication {
 
@@ -40,5 +42,9 @@ class MainApplication : Application(), ReactApplication {
       // If you opted-in for the New Architecture, we load the native entry point for this app.
       load()
     }
+    
+    // Inicializar OneSignal
+    // NOTA: setAppId se llamará desde JavaScript, aquí solo configuramos el entorno
+    OneSignal.Debug.logLevel = LogLevel.VERBOSE
   }
 }

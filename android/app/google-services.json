@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "650316063766",
+    "project_id": "ager-app",
+    "storage_bucket": "ager-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:650316063766:android:31ce32c1c45d407b400137",
+        "android_client_info": {
+          "package_name": "com.agerapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3BMVhVoey_qr7kjk_uuxFSlY-VI2P_Zo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

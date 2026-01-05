@@ -111,6 +111,24 @@ const UITextInput = ({
                 : 'default'
             }
             autoCapitalize={type === 'email' ? 'none' : 'sentences'}
+            autoComplete={
+              type === 'email'
+                ? 'email'
+                : type === 'password'
+                ? 'password'
+                : type === 'user'
+                ? 'username'
+                : 'off'
+            }
+            textContentType={
+              type === 'email'
+                ? 'emailAddress'
+                : type === 'password'
+                ? 'password'
+                : type === 'user'
+                ? 'username'
+                : 'none'
+            }
             style={[
               styles.textInput,
               {color: colors.black, backgroundColor: backgroundColor},

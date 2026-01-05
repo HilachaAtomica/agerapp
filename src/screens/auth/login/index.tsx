@@ -20,6 +20,7 @@ import {useLoginMutation} from '../../../redux/services/service.auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {ACCESS_TOKEN_KEY} from '../../../constants/constants.api';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {OneSignal} from 'react-native-onesignal';
 
 export type LoginPayload = {
   username: string;
@@ -74,6 +75,13 @@ const Login = ({}: Props) => {
         }
 
         await AsyncStorage.setItem(ACCESS_TOKEN_KEY, response?.token);
+        
+        // Inicializar OneSignal con el username del operario
+        if (response?.username) {
+          OneSignal.login(response.username);
+          console.log('OneSignal: Usuario autenticado con username:', response.username);
+        }
+        
         setLoading(false);
 
         return NavigationUtil.reset({
@@ -120,6 +128,7 @@ const Login = ({}: Props) => {
                 <Input
                   onChange={text => setValue('username', text)}
                   value={username}
+                  type="user"
                   label="Usuario"
                   leftIcon="email"
                   placeholder="Usuario"

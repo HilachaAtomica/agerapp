@@ -8,7 +8,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {AppTabParamList} from '../../../navigation/navigation.app';
-import {Calendar} from 'react-native-calendars';
+import {Calendar, LocaleConfig} from 'react-native-calendars';
 import {useColors} from '../../../hooks/hook.color';
 import {useState, useEffect, useCallback} from 'react';
 import moment from 'moment';
@@ -23,6 +23,50 @@ import {
   useGetDaysWithAppointmentsQuery,
   useGetAppointmentsByDayQuery,
 } from '../../../redux/services/service.calendar';
+
+// Configurar react-native-calendars en español
+LocaleConfig.locales['es'] = {
+  monthNames: [
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
+  ],
+  monthNamesShort: [
+    'Ene',
+    'Feb',
+    'Mar',
+    'Abr',
+    'May',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dic',
+  ],
+  dayNames: [
+    'Domingo',
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+  ],
+  dayNamesShort: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+  today: 'Hoy',
+};
+LocaleConfig.defaultLocale = 'es';
 
 type Props = NativeStackScreenProps<AppTabParamList, 'Calendar'>;
 

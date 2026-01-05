@@ -107,13 +107,25 @@ const AppointmentInformationModal = (
       ? moment(appointment.fechaCita)
       : null;
 
+    // Detectar si es "sin hora" (00:00 o 01:00)
+    const isSinHora = startDate &&
+                     (startDate.hour() === 0 || startDate.hour() === 1) && startDate.minute() === 0 &&
+                     (endDate.hour() === 0 || endDate.hour() === 1) && endDate.minute() === 0;
+
+    let dateTimeInfo;
+    if (isSinHora) {
+      dateTimeInfo = startDate
+        ? `Fecha inicio: ${startDate.format('DD/MM/YYYY')} - Sin hora\nFecha fin: ${endDate.format('DD/MM/YYYY')} - Sin hora`
+        : `Fecha fin: ${endDate.format('DD/MM/YYYY')} - Sin hora`;
+    } else {
+      dateTimeInfo = startDate
+        ? `Fecha inicio: ${startDate.format('DD/MM/YYYY HH:mm')}\nFecha fin: ${endDate.format('DD/MM/YYYY HH:mm')}`
+        : `Fecha fin: ${endDate.format('DD/MM/YYYY HH:mm')}`;
+    }
+
     return {
       subject: `${appointment.expedienteId}`,
-      dateTimeInfo: startDate
-        ? `Fecha inicio: ${startDate.format(
-            'DD/MM/YYYY HH:mm',
-          )}\nFecha fin: ${endDate.format('DD/MM/YYYY HH:mm')}`
-        : `Fecha fin: ${endDate.format('DD/MM/YYYY HH:mm')}`,
+      dateTimeInfo: dateTimeInfo,
       address: `${appointment.domicilioCliente}, ${appointment.localidadCliente}`,
       description: appointment.info,
       daysRemaining: (startDate || endDate).diff(

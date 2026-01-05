@@ -78,6 +78,8 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
 
   const handleOpenFile = async (url: string, name: string, contentType: string) => {
     const isImageFile = isImage(contentType);
+    const isPdfFile = contentType?.includes('pdf') || name?.toLowerCase().endsWith('.pdf');
+    const isVideoFile = contentType?.startsWith('video/') || name?.toLowerCase().match(/\.(mp4|avi|mov|wmv|mkv)$/);
 
     // Para imágenes, abrir modal viewer
     if (isImageFile) {
@@ -86,7 +88,7 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
       return;
     }
 
-    // Para otros archivos, descargar y abrir con FileViewer
+    // Para PDFs y videos, descargar directamente sin preview
     try {
       setDownloadingFile(url);
 
@@ -102,10 +104,11 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
         fileName = `${fileName}.${extension}`;
       }
 
-      // Ruta temporal para guardar el archivo
-      const localFile = `${RNFS.CachesDirectoryPath}/${fileName}`;
+      // Para PDFs y videos, usar Downloads, para otros archivos usar Cache
+      const targetDir = (isPdfFile || isVideoFile) ? RNFS.DownloadDirectoryPath : RNFS.CachesDirectoryPath;
+      const localFile = `${targetDir}/${fileName}`;
 
-      console.log('Downloading file:', {fullUrl, localFile, fileName, contentType, token: !!token});
+      console.log('Downloading file:', {fullUrl, localFile, fileName, contentType, token: !!token, isPdf: isPdfFile, isVideo: isVideoFile});
 
       // Descargar el archivo con autenticación
       const downloadResult = await RNFS.downloadFile({
@@ -119,29 +122,61 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
       }).promise;
 
       if (downloadResult.statusCode === 200) {
-        console.log('File downloaded successfully, opening...');
+        console.log('File downloaded successfully');
         
-        try {
-          // Usar react-native-share para abrir el archivo con intent chooser
-          await Share.open({
-            url: Platform.OS === 'android' ? `file://${localFile}` : localFile,
-            type: contentType || 'application/*',
-            title: 'Abrir con...',
-            subject: fileName,
-            failOnCancel: false,
-          });
-        } catch (shareError: any) {
-          console.error('Share error:', shareError);
-          
-          // Si el usuario canceló, no mostrar error
-          if (shareError.message === 'User did not share') {
-            return;
-          }
-          
+        // Si es PDF o video, mostrar mensaje de descarga exitosa
+        if (isPdfFile || isVideoFile) {
           Alert.alert(
-            'Error',
-            'No se pudo abrir el archivo. Intenta instalando una aplicación compatible como Google Drive o Adobe Reader.',
+            'Descarga completada',
+            `El archivo se ha guardado en Descargas/${fileName}`,
+            [
+              {
+                text: 'Abrir',
+                onPress: async () => {
+                  try {
+                    await Share.open({
+                      url: Platform.OS === 'android' ? `file://${localFile}` : localFile,
+                      type: contentType || 'application/*',
+                      title: 'Abrir con...',
+                      subject: fileName,
+                      failOnCancel: false,
+                    });
+                  } catch (shareError: any) {
+                    if (shareError.message !== 'User did not share') {
+                      Alert.alert('Error', 'No se pudo abrir el archivo.');
+                    }
+                  }
+                },
+              },
+              {
+                text: 'OK',
+                style: 'cancel',
+              },
+            ],
           );
+        } else {
+          // Para otros archivos, abrir directamente con intent chooser
+          try {
+            await Share.open({
+              url: Platform.OS === 'android' ? `file://${localFile}` : localFile,
+              type: contentType || 'application/*',
+              title: 'Abrir con...',
+              subject: fileName,
+              failOnCancel: false,
+            });
+          } catch (shareError: any) {
+            console.error('Share error:', shareError);
+            
+            // Si el usuario canceló, no mostrar error
+            if (shareError.message === 'User did not share') {
+              return;
+            }
+            
+            Alert.alert(
+              'Error',
+              'No se pudo abrir el archivo. Intenta instalando una aplicación compatible.',
+            );
+          }
         }
       } else {
         throw new Error(
@@ -152,7 +187,7 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
       console.error('Error opening file:', error);
       Alert.alert(
         'Error',
-        'No se pudo abrir el archivo. Por favor, intenta de nuevo.',
+        'No se pudo descargar el archivo. Por favor, intenta de nuevo.',
       );
     } finally {
       setDownloadingFile(null);
@@ -253,7 +288,7 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
   const totalFiles = (archivosVisibles?.length || 0) + (archivosFotos?.length || 0) + (archivosPresupuestos?.length || 0) + (archivosFirmas?.length || 0);
 
   return (
-    <SafeAreaView style={{flex: 1, backgroundColor: colors.background}} edges={['top', 'bottom']}>
+    <SafeAreaView style={{flex: 1, backgroundColor: colors.white}} edges={['top', 'bottom']}>
       <Header title="Archivos adjuntos" goBack={navigation.goBack} />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {totalFiles === 0 ? (

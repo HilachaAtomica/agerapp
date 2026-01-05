@@ -211,15 +211,29 @@ const PhotosModal = ({
           />
 
           <View style={styles.content}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{paddingBottom: 20}}>
               <View style={styles.instructions}>
                 <Text style={styles.instructionText}>
                   Añade fotos relacionadas con la visita
                 </Text>
+                {photos.length > 0 && (
+                  <View style={[styles.photoCounter, {backgroundColor: colors.primary + '15', borderColor: colors.primary}]}>
+                    <AppIcon name="camera" size={20} color={colors.primary} />
+                    <Text color={colors.primary} fw="semibold" style={{fontSize: 16}}>
+                      {photos.length} {photos.length === 1 ? 'foto seleccionada' : 'fotos seleccionadas'}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               {photos.length > 0 && (
-                <View style={styles.photoGrid}>
+                <ScrollView 
+                  style={styles.photoScrollContainer}
+                  contentContainerStyle={styles.photoGrid}
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}>
                   {photos.map((photo, index) => (
                     <View key={index} style={styles.photoContainer}>
                       <Image
@@ -236,7 +250,7 @@ const PhotosModal = ({
                       </Pressable>
                     </View>
                   ))}
-                </View>
+                </ScrollView>
               )}
 
               <View style={styles.buttonsContainer}>
@@ -314,6 +328,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
+  photoCounter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 8,
+  },
   section: {
     marginBottom: 16,
   },
@@ -321,11 +346,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
   },
+  photoScrollContainer: {
+    maxHeight: 300,
+    marginBottom: 16,
+  },
   photoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'flex-start',
-    marginBottom: 16,
   },
   photoContainer: {
     width: '30%',

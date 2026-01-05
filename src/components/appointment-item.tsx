@@ -156,17 +156,27 @@ const AppointmentItem = ({
       // Próximas citas: fecha inicio y fin con horas
       if (!appointment.fechaCita) {
         // Si no hay fechaCita, mostrar solo fecha fin con hora
-        const fechaFin = moment(appointment.fechaCitaFin).format(
-          'DD/MM/YYYY HH:mm',
-        );
+        const fechaFinMoment = moment(appointment.fechaCitaFin);
+        // Detectar si es "sin hora" (00:00 o 01:00)
+        if ((fechaFinMoment.hour() === 0 || fechaFinMoment.hour() === 1) && fechaFinMoment.minute() === 0) {
+          return `Fecha fin: ${fechaFinMoment.format('DD/MM/YYYY')} - Sin hora`;
+        }
+        const fechaFin = fechaFinMoment.format('DD/MM/YYYY HH:mm');
         return `Fecha fin: ${fechaFin}`;
       }
-      const fechaInicio = moment(appointment.fechaCita).format(
-        'DD/MM/YYYY HH:mm',
-      );
-      const fechaFin = moment(appointment.fechaCitaFin).format(
-        'DD/MM/YYYY HH:mm',
-      );
+      const fechaInicioMoment = moment(appointment.fechaCita);
+      const fechaFinMoment = moment(appointment.fechaCitaFin);
+      
+      // Detectar si es "sin hora" (00:00 o 01:00)
+      const isSinHora = (fechaInicioMoment.hour() === 0 || fechaInicioMoment.hour() === 1) && fechaInicioMoment.minute() === 0 &&
+                       (fechaFinMoment.hour() === 0 || fechaFinMoment.hour() === 1) && fechaFinMoment.minute() === 0;
+      
+      if (isSinHora) {
+        return `Fecha inicio: ${fechaInicioMoment.format('DD/MM/YYYY')} - Sin hora\nFecha fin: ${fechaFinMoment.format('DD/MM/YYYY')} - Sin hora`;
+      }
+      
+      const fechaInicio = fechaInicioMoment.format('DD/MM/YYYY HH:mm');
+      const fechaFin = fechaFinMoment.format('DD/MM/YYYY HH:mm');
       return `Fecha inicio: ${fechaInicio}\nFecha fin: ${fechaFin}`;
     }
   };
