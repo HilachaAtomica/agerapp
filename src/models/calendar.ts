@@ -42,7 +42,10 @@ export interface AppointmentDetail {
   archivosVisibles?: ArchivoVisible[];
   archivosPresupuestos?: ArchivoVisible[];
   archivosFotos?: ArchivoVisible[];
+  archivosFirmas?: ArchivoVisible[];
+  archivosComentarios?: ArchivoVisible[];
   pathPresupuestos?: string;
   pathFotos?: string;
   pathFirmas?: string;
+  pathComentarios?: string;
 }

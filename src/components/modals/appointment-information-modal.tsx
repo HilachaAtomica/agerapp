@@ -141,6 +141,11 @@ const AppointmentInformationModal = (
   useEffect(() => {
     if (!appointment) return;
 
+    console.log('=== APPOINTMENT DATA ===');
+    console.log('Appointment completo:', JSON.stringify(appointment, null, 2));
+    console.log('archivosComentarios:', appointment.archivosComentarios);
+    console.log('========================');
+
     // Comentario: iniciar vacío, los comentarios son del operario, no la descripción de la cita
     setComment('');
 
@@ -678,7 +683,7 @@ const AppointmentInformationModal = (
                         </Text>
                       )}
                     </Text>
-                    <Text>{formattedAppointment?.description}</Text>
+                    <Text selectable>{formattedAppointment?.description}</Text>
                   </View>
 
                   {appointment?.contactos &&
@@ -922,6 +927,50 @@ const AppointmentInformationModal = (
                       color={colors.primary}
                     />
                   </Pressable>
+
+                  {appointment?.archivosComentarios?.length > 0 && (
+                    <Pressable
+                      style={[
+                        styles.attachmentsButton,
+                        {
+                          backgroundColor: colors.primary + '10',
+                          borderColor: colors.primary,
+                          marginTop: 8,
+                        },
+                      ]}
+                      onPress={() => {
+                        setModalVisible(false);
+                        setTimeout(() => {
+                          NavigationUtil.navigate('Attachments', {
+                            archivosVisibles: [],
+                            archivosFotos: [],
+                            archivosPresupuestos: [],
+                            archivosFirmas: [],
+                            archivosComentarios: appointment?.archivosComentarios || [],
+                            citaId: citaId,
+                            isDoneFromHistory: isDoneFromHistory,
+                          });
+                        }, 100);
+                      }}>
+                      <View style={styles.attachmentsButtonContent}>
+                        <AppIcon name="file" size={20} color={colors.primary} />
+                        <View style={{flex: 1}}>
+                          <Text fw="semibold" color={colors.primary} style={{fontSize: 14}}>
+                            Ver archivos de comentarios
+                          </Text>
+                          <Text color={colors.grey} style={{fontSize: 12}}>
+                            {appointment?.archivosComentarios?.length || 0}{' '}
+                            archivo(s) TXT
+                          </Text>
+                        </View>
+                        <AppIcon
+                          name="arrowRight"
+                          size={16}
+                          color={colors.primary}
+                        />
+                      </View>
+                    </Pressable>
+                  )}
 
                   <Pressable
                     style={[

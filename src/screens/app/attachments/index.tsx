@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
+  Modal,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
@@ -23,7 +24,6 @@ import RNFS from 'react-native-fs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {ImageViewerModal} from '../../../components/modals/image-viewer-modal';
 import FastImage from 'react-native-fast-image';
-import Share from 'react-native-share';
 
 const {width} = Dimensions.get('window');
 
@@ -35,6 +35,7 @@ type AttachmentsScreenProps = {
       archivosFotos?: ArchivoVisible[];
       archivosPresupuestos?: ArchivoVisible[];
       archivosFirmas?: ArchivoVisible[];
+      archivosComentarios?: ArchivoVisible[];
       citaId?: number;
       isDoneFromHistory?: boolean;
     };
@@ -48,6 +49,7 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
     archivosFotos = [], 
     archivosPresupuestos = [],
     archivosFirmas = [],
+    archivosComentarios = [],
     citaId,
     isDoneFromHistory
   } = route.params || {};
@@ -55,6 +57,8 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [txtContent, setTxtContent] = useState<string | null>(null);
+  const [txtFileName, setTxtFileName] = useState<string>('');
 
   // Cargar token al montar
   useEffect(() => {
@@ -80,6 +84,7 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
     const isImageFile = isImage(contentType);
     const isPdfFile = contentType?.includes('pdf') || name?.toLowerCase().endsWith('.pdf');
     const isVideoFile = contentType?.startsWith('video/') || name?.toLowerCase().match(/\.(mp4|avi|mov|wmv|mkv)$/);
+    const isTxtFile = contentType?.includes('text') || name?.toLowerCase().endsWith('.txt');
 
     // Para imágenes, abrir modal viewer
     if (isImageFile) {
@@ -88,7 +93,36 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
       return;
     }
 
-    // Para PDFs y videos, descargar directamente sin preview
+    // Para archivos TXT, mostrar el contenido en un modal
+    if (isTxtFile) {
+      try {
+        setDownloadingFile(url);
+        const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
+        const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
+        const fileName = name || decodeURIComponent(url.split('/').pop() || 'file.txt');
+
+        // Obtener el contenido directamente sin descargar
+        const response = await fetch(fullUrl, {
+          headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+        });
+
+        if (response.ok) {
+          const content = await response.text();
+          setTxtFileName(fileName);
+          setTxtContent(content);
+        } else {
+          throw new Error(`Failed to fetch: ${response.status}`);
+        }
+      } catch (error) {
+        console.error('Error reading txt file:', error);
+        Alert.alert('Error', 'No se pudo leer el archivo de texto.');
+      } finally {
+        setDownloadingFile(null);
+      }
+      return;
+    }
+
+    // Para PDFs y videos, descargar y que aparezca en notificaciones
     try {
       setDownloadingFile(url);
 
@@ -104,13 +138,13 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
         fileName = `${fileName}.${extension}`;
       }
 
-      // Para PDFs y videos, usar Downloads, para otros archivos usar Cache
-      const targetDir = (isPdfFile || isVideoFile) ? RNFS.DownloadDirectoryPath : RNFS.CachesDirectoryPath;
+      // Todos los archivos se descargan a Downloads
+      const targetDir = RNFS.DownloadDirectoryPath;
       const localFile = `${targetDir}/${fileName}`;
 
       console.log('Downloading file:', {fullUrl, localFile, fileName, contentType, token: !!token, isPdf: isPdfFile, isVideo: isVideoFile});
 
-      // Descargar el archivo con autenticación
+      // Descargar el archivo con autenticación y opciones para notificación
       const downloadResult = await RNFS.downloadFile({
         fromUrl: fullUrl,
         toFile: localFile,
@@ -119,72 +153,57 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
               Authorization: `Bearer ${token}`,
             }
           : undefined,
+        background: true,
+        progressDivider: 1,
+        begin: (res) => {
+          console.log('Download has begun');
+        },
+        progress: (res) => {
+          const progress = (res.bytesWritten / res.contentLength) * 100;
+          console.log(`Progress: ${progress.toFixed(2)}%`);
+        }
       }).promise;
 
       if (downloadResult.statusCode === 200) {
-        console.log('File downloaded successfully');
+        console.log('File downloaded successfully to:', localFile);
         
-        // Si es PDF o video, mostrar mensaje de descarga exitosa
-        if (isPdfFile || isVideoFile) {
-          Alert.alert(
-            'Descarga completada',
-            `El archivo se ha guardado en Descargas/${fileName}`,
-            [
-              {
-                text: 'Abrir',
-                onPress: async () => {
-                  try {
-                    await Share.open({
-                      url: Platform.OS === 'android' ? `file://${localFile}` : localFile,
-                      type: contentType || 'application/*',
-                      title: 'Abrir con...',
-                      subject: fileName,
-                      failOnCancel: false,
+        // Notificar al usuario que la descarga está completa con opción de abrir carpeta
+        Alert.alert(
+          'Descarga completada',
+          `El archivo "${fileName}" se ha guardado en la carpeta Descargas.`,
+          [
+            {
+              text: 'Abrir Descargas',
+              onPress: () => {
+                if (Platform.OS === 'android') {
+                  // Intent para abrir el gestor de archivos en la carpeta Downloads
+                  Linking.openURL('content://com.android.externalstorage.documents/document/primary:Download')
+                    .catch(() => {
+                      // Fallback: intentar abrir el gestor de archivos genérico
+                      Linking.openURL('content://com.android.documentsui/.picker.PickActivity')
+                        .catch(() => {
+                          // Último fallback
+                          Alert.alert('Información', 'Abre tu gestor de archivos y busca la carpeta "Descargas"');
+                        });
                     });
-                  } catch (shareError: any) {
-                    if (shareError.message !== 'User did not share') {
-                      Alert.alert('Error', 'No se pudo abrir el archivo.');
-                    }
-                  }
-                },
+                } else {
+                  Alert.alert('Información', 'Busca el archivo en la app Archivos');
+                }
               },
-              {
-                text: 'OK',
-                style: 'cancel',
-              },
-            ],
-          );
-        } else {
-          // Para otros archivos, abrir directamente con intent chooser
-          try {
-            await Share.open({
-              url: Platform.OS === 'android' ? `file://${localFile}` : localFile,
-              type: contentType || 'application/*',
-              title: 'Abrir con...',
-              subject: fileName,
-              failOnCancel: false,
-            });
-          } catch (shareError: any) {
-            console.error('Share error:', shareError);
-            
-            // Si el usuario canceló, no mostrar error
-            if (shareError.message === 'User did not share') {
-              return;
-            }
-            
-            Alert.alert(
-              'Error',
-              'No se pudo abrir el archivo. Intenta instalando una aplicación compatible.',
-            );
-          }
-        }
+            },
+            {
+              text: 'OK',
+              style: 'cancel',
+            },
+          ]
+        );
       } else {
         throw new Error(
           `Download failed with status: ${downloadResult.statusCode}`,
         );
       }
     } catch (error) {
-      console.error('Error opening file:', error);
+      console.error('Error downloading file:', error);
       Alert.alert(
         'Error',
         'No se pudo descargar el archivo. Por favor, intenta de nuevo.',
@@ -285,7 +304,7 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
     );
   };
 
-  const totalFiles = (archivosVisibles?.length || 0) + (archivosFotos?.length || 0) + (archivosPresupuestos?.length || 0) + (archivosFirmas?.length || 0);
+  const totalFiles = (archivosVisibles?.length || 0) + (archivosFotos?.length || 0) + (archivosPresupuestos?.length || 0) + (archivosFirmas?.length || 0) + (archivosComentarios?.length || 0);
 
   return (
     <SafeAreaView style={{flex: 1, backgroundColor: colors.white}} edges={['top', 'bottom']}>
@@ -304,6 +323,7 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
             {renderFileSection('Fotos', archivosFotos, 'camera')}
             {renderFileSection('Presupuestos', archivosPresupuestos, 'file')}
             {renderFileSection('Firmas', archivosFirmas, 'file')}
+            {renderFileSection('Comentarios', archivosComentarios, 'file')}
           </>
         )}
       </ScrollView>
@@ -313,6 +333,33 @@ const AttachmentsScreen = ({navigation, route}: AttachmentsScreenProps) => {
         imageUrl={selectedImage || ''}
         onClose={() => setSelectedImage(null)}
       />
+
+      {/* Modal para mostrar contenido de archivos TXT */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={txtContent !== null}
+        onRequestClose={() => setTxtContent(null)}>
+        <View style={styles.txtModalOverlay}>
+          <View style={[styles.txtModalContainer, {backgroundColor: colors.white}]}>
+            <View style={styles.txtModalHeader}>
+              <Text fw="bold" style={styles.txtModalTitle}>
+                {txtFileName}
+              </Text>
+              <Pressable
+                style={styles.txtCloseButton}
+                onPress={() => setTxtContent(null)}>
+                <AppIcon name="close" size={24} color={colors.black} />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.txtModalContent}>
+              <Text selectable style={styles.txtContent}>
+                {txtContent}
+              </Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -379,6 +426,49 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     marginTop: 12,
+  },
+  txtModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  txtModalContainer: {
+    width: '90%',
+    maxHeight: '80%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  txtModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  txtModalTitle: {
+    fontSize: 18,
+    flex: 1,
+  },
+  txtCloseButton: {
+    padding: 4,
+  },
+  txtModalContent: {
+    padding: 16,
+    maxHeight: '100%',
+  },
+  txtContent: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
 

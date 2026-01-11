@@ -30,7 +30,7 @@ export const useOnesignal = ({ isEnabled, username }: UseOnesignalProps) => {
       // Mostrar también un toast dentro de la app
       const title = notification.title || 'Nueva notificación';
       const body = notification.body || '';
-      const data = notification.additionalData;
+      const data = notification.additionalData as any;
       
       Toast.show({
         type: 'success',
@@ -52,7 +52,7 @@ export const useOnesignal = ({ isEnabled, username }: UseOnesignalProps) => {
 
   const clickHandler = useCallback((event: NotificationClickEvent) => {
     console.log('OneSignal: notification clicked:', event);
-    const data = event.notification.additionalData;
+    const data = event.notification.additionalData as any;
     
     // Si la notificación contiene un citaId, abrir el modal de la cita
     if (data?.citaId) {
@@ -74,14 +74,11 @@ export const useOnesignal = ({ isEnabled, username }: UseOnesignalProps) => {
         OneSignal.login(username);
         console.log('OneSignal: Usuario autenticado con username:', username);
         
-        // Establecer tag por defecto para notificaciones de 30 minutos (habilitado)
-        // Solo se establece si no existe, para no sobrescribir la preferencia del usuario
-        OneSignal.User.getTags().then((tags) => {
-          if (!tags.notif_30min_enabled) {
-            OneSignal.User.addTag('notif_30min_enabled', 'true');
-            console.log('OneSignal: Tag de notificaciones 30min establecido por defecto');
-          }
-        });
+        // Establecer tags por defecto para notificaciones (habilitados)
+        // Forzar el establecimiento de los tags para asegurar que todos los usuarios los tengan
+        OneSignal.User.addTag('notif_30min_enabled', 'true');
+        OneSignal.User.addTag('notif_cierre_cita_enabled', 'true');
+        console.log('OneSignal: Tags de notificaciones establecidos (30min y cierre de cita)');
       }
       
       if (!OneSignal.Notifications.hasPermission()) {

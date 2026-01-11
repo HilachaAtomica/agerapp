@@ -52,9 +52,9 @@ const PhotosModal = ({
   const selectImg = useCallback(async () => {
     try {
       const options: any = {
-        title: 'Selecciona una imagen',
+        title: 'Selecciona archivos',
         selectionLimit: 0,
-        mediaType: 'photo',
+        mediaType: 'mixed',  // Cambiado de 'photo' a 'mixed' para permitir videos
         storageOptions: {
           skipBackup: true,
           path: 'images',
@@ -80,18 +80,18 @@ const PhotosModal = ({
 
       if (response?.assets) {
         if (response.assets.length > 1) {
-          const selectedImages = response.assets.map(asset =>
+          const selectedFiles = response.assets.map(asset =>
             convertToFormData(asset),
           );
-          setPhotos(prevPhotos => [...prevPhotos, ...selectedImages]);
+          setPhotos(prevPhotos => [...prevPhotos, ...selectedFiles]);
         } else {
           const file = convertToFormData(response.assets[0]);
           setPhotos(prevPhotos => [...prevPhotos, file]);
         }
       }
     } catch (error) {
-      console.error('Error selecting images:', error);
-      Alert.alert('Error', 'No se pudo seleccionar las imágenes');
+      console.error('Error selecting files:', error);
+      Alert.alert('Error', 'No se pudo seleccionar los archivos');
     }
   }, []);
 
@@ -178,7 +178,7 @@ const PhotosModal = ({
 
   const handleSend = async () => {
     if (photos.length === 0) {
-      Alert.alert('Error', 'Por favor, agregue al menos una foto');
+      Alert.alert('Error', 'Por favor, agregue al menos un archivo');
       return;
     }
 
@@ -202,7 +202,7 @@ const PhotosModal = ({
             {backgroundColor: colors.white, shadowColor: colors.black},
           ]}>
           <Header
-            title="Fotos"
+            title="Fotos y Videos"
             renderRight={
               <Pressable style={styles.closeButton} onPress={onClose}>
                 <AppIcon name="close" color={colors.black} size={24} />
@@ -216,13 +216,13 @@ const PhotosModal = ({
               contentContainerStyle={{paddingBottom: 20}}>
               <View style={styles.instructions}>
                 <Text style={styles.instructionText}>
-                  Añade fotos relacionadas con la visita
+                  Añade fotos o videos relacionados con la visita
                 </Text>
                 {photos.length > 0 && (
                   <View style={[styles.photoCounter, {backgroundColor: colors.primary + '15', borderColor: colors.primary}]}>
                     <AppIcon name="camera" size={20} color={colors.primary} />
                     <Text color={colors.primary} fw="semibold" style={{fontSize: 16}}>
-                      {photos.length} {photos.length === 1 ? 'foto seleccionada' : 'fotos seleccionadas'}
+                      {photos.length} {photos.length === 1 ? 'archivo seleccionado' : 'archivos seleccionados'}
                     </Text>
                   </View>
                 )}
@@ -274,7 +274,7 @@ const PhotosModal = ({
                   onPress={selectImg}>
                   <AppIcon name="gallery" size={36} color={colors.primary} />
                   <Text color={colors.primary} fw="medium">
-                    Galería
+                    Galería/Videos
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -285,7 +285,7 @@ const PhotosModal = ({
               onPress={handleSend}
               size="smMd"
               disabled={photos.length === 0 || isLoading}>
-              {isLoading ? 'Enviando...' : 'Enviar fotos'}
+              {isLoading ? 'Enviando...' : 'Enviar archivos'}
             </Button>
           </View>
         </View>
